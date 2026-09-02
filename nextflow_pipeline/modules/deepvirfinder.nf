@@ -10,7 +10,7 @@
         tuple val(sampleid), path(contigs)
 
     output:
-        tuple val(sampleid), path("${sampleid}/"), emit: viral_inferences
+        tuple val(sampleid), path("${sampleid}"), emit: viral_inferences
 
     shell:
     '''
@@ -20,3 +20,5 @@
     -l !{params.viralinference_minlength} \
     -c !{task.cpus}
     '''
+
+ }
