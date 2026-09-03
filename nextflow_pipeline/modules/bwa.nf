@@ -1,7 +1,7 @@
 #!/usr/bin/env nextflow
 
 
-// Mapped reads to sequences with bwa
+// Index a reference sequence with bwa
  process bwa_index {
     container "${params.container__bwa}"
                         
@@ -20,7 +20,6 @@
     '''
 }
 
-// Mapped reads to sequences with bwa
 // Align reads to an indexed reference with bwa mem
 process bwa_mem {
     container "${params.container__bwa}"
@@ -31,12 +30,12 @@ process bwa_mem {
     output:
         tuple val(sampleid), path("${sampleid}.sam"), emit: sam_file
 
-    script:
-    """
+    shell:
+    '''
     bwa mem \
-    ${indexed_sequence} \
-    ${clean_r1} \
-    ${clean_r2} \
-    -t ${task.cpus} > ${sampleid}.sam
-    """
+    !{indexed_sequence} \
+    !{clean_r1} \
+    !{clean_r2} \
+    -t !{task.cpus} > !{sampleid}.sam
+    '''
 }

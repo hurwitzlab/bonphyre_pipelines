@@ -22,3 +22,4 @@
     all \
     --min-length !{params.viralinference_minlength}  # 1500
     '''
+}

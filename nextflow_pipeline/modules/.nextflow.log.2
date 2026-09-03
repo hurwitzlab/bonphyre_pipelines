@@ -1,0 +1,74 @@
+Sep-03 10:26:48.615 [main] DEBUG nextflow.cli.Launcher - $> nextflow run marvel.nf
+Sep-03 10:26:48.654 [main] DEBUG nextflow.plugin.PluginsFacade - Setting up plugin manager > mode=prod; embedded=false; plugins-dir=/Users/mtouced/.nextflow/plugins; core-plugins: nf-amazon@3.9.0,nf-azure@1.22.2,nf-cloudcache@0.6.0,nf-codecommit@0.5.1,nf-console@1.3.0,nf-google@1.27.2,nf-k8s@1.5.2,nf-seqera@0.19.0,nf-tower@1.27.0,nf-wave@1.20.0
+Sep-03 10:26:48.667 [main] INFO  o.pf4j.DefaultPluginStatusProvider - Enabled plugins: []
+Sep-03 10:26:48.667 [main] INFO  o.pf4j.DefaultPluginStatusProvider - Disabled plugins: []
+Sep-03 10:26:48.668 [main] INFO  org.pf4j.DefaultPluginManager - PF4J version 3.14.1 in 'deployment' mode
+Sep-03 10:26:48.674 [main] DEBUG nextflow.util.RetryConfig - Missing nextflow session - using default retry config
+Sep-03 10:26:48.733 [main] DEBUG nextflow.plugin.PluginUpdater - Using plugin repository: HttpPluginRepository [registry]; url=https://registry.nextflow.io/api
+Sep-03 10:26:48.735 [main] INFO  org.pf4j.AbstractPluginManager - No plugins
+Sep-03 10:26:48.744 [main] DEBUG nextflow.config.ConfigParserFactory - Using config parser v2
+Sep-03 10:26:48.756 [main] DEBUG nextflow.plugin.PluginsFacade - Plugins default=[]
+Sep-03 10:26:48.756 [main] DEBUG nextflow.plugin.PluginsFacade - Plugins resolved requirement=[]
+Sep-03 10:26:48.763 [main] DEBUG n.secret.LocalSecretsProvider - Secrets store: /Users/mtouced/.nextflow/secrets/store.json
+Sep-03 10:26:48.768 [main] DEBUG nextflow.secret.SecretsLoader - Discovered secrets providers: [nextflow.secret.LocalSecretsProvider@6c1832aa] - activable => nextflow.secret.LocalSecretsProvider@6c1832aa
+Sep-03 10:26:48.813 [main] DEBUG nextflow.Session - Session UUID: eb345b97-6018-4713-8eb3-1fa0ef4f33e1
+Sep-03 10:26:48.814 [main] DEBUG nextflow.Session - Run name: irreverent_davinci
+Sep-03 10:26:48.814 [main] DEBUG nextflow.Session - Executor pool size: 14
+Sep-03 10:26:48.817 [main] DEBUG nextflow.file.FilePorter - File porter settings maxRetries=3; maxTransfers=50; pollTimeout=null
+Sep-03 10:26:48.819 [main] DEBUG nextflow.util.ThreadPoolBuilder - Creating thread pool 'FileTransfer' minSize=10; maxSize=42; workQueue=LinkedBlockingQueue[-1]; allowCoreThreadTimeout=false
+Sep-03 10:26:48.831 [main] DEBUG nextflow.cli.CmdRun - 
+  Version: 26.04.0 build 12031
+  Created: 29-04-2026 04:00 UTC (00:00 EDT)
+  System: Mac OS X 26.6.2
+  Runtime: Groovy 4.0.31 on OpenJDK 64-Bit Server VM 21.0.6+7-LTS
+  Encoding: UTF-8 (UTF-8)
+  Process: 41588@BRC-KW66T3CJQ7 [10.158.62.196]
+  CPUs: 14 - Mem: 24 GB (193 MB) - Swap: 0 (0)
+Sep-03 10:26:48.837 [main] DEBUG nextflow.Session - Work-dir: /Users/mtouced/Documents/GitHub/viral_inference_benchmark/nextflow_pipeline/modules/work [Mac OS X]
+Sep-03 10:26:48.837 [main] DEBUG nextflow.Session - Script base path does not exist or is not a directory: /Users/mtouced/Documents/GitHub/viral_inference_benchmark/nextflow_pipeline/modules/bin
+Sep-03 10:26:48.840 [main] DEBUG nextflow.executor.ExecutorFactory - Extension executors providers=[]
+Sep-03 10:26:48.843 [main] DEBUG nextflow.Session - Observer factory (v2): LinObserverFactory
+Sep-03 10:26:48.844 [main] DEBUG nextflow.Session - Observer factory (v2): DefaultObserverFactory
+Sep-03 10:26:48.860 [main] DEBUG nextflow.cache.CacheFactory - Using Nextflow cache factory: nextflow.cache.DefaultCacheFactory
+Sep-03 10:26:48.864 [main] DEBUG nextflow.util.CustomThreadPool - Creating default thread pool > poolSize: 15; maxThreads: 1000
+Sep-03 10:26:48.884 [main] DEBUG nextflow.Session - Session start
+Sep-03 10:26:48.887 [main] DEBUG nextflow.script.ScriptLoaderFactory - Using script parser v2
+Sep-03 10:26:49.064 [main] DEBUG nextflow.script.ScriptRunner - > Launching execution
+Sep-03 10:26:49.077 [main] WARN  nextflow.script.ScriptBinding - Access to undefined parameter `container__marvel` -- Initialise it to a default value eg. `params.container__marvel = some_value`
+Sep-03 10:26:49.078 [main] WARN  nextflow.script.ScriptBinding - Access to undefined parameter `marvel_outdir` -- Initialise it to a default value eg. `params.marvel_outdir = some_value`
+Sep-03 10:26:49.100 [main] DEBUG nextflow.script.ProcessEntryHandler - Getting input arguments for process: marvel
+Sep-03 10:26:49.100 [main] DEBUG nextflow.script.ProcessEntryHandler - Session params: [:]
+Sep-03 10:26:49.101 [main] DEBUG nextflow.script.ProcessEntryHandler - Could not load input types from module spec: Module spec not found: /Users/mtouced/Documents/GitHub/viral_inference_benchmark/nextflow_pipeline/modules/meta.yml
+Sep-03 10:26:49.102 [main] DEBUG nextflow.script.ProcessEntryHandler - Parameter values: [:]
+Sep-03 10:26:49.102 [main] ERROR nextflow.script.ProcessEntryHandler - Failed to get input arguments for process marvel: Missing required parameter: --sampleid
+Sep-03 10:26:49.102 [main] DEBUG nextflow.script.ScriptRunner - Parsed script files:
+  Main: /Users/mtouced/Documents/GitHub/viral_inference_benchmark/nextflow_pipeline/modules/marvel.nf
+Sep-03 10:26:49.102 [main] DEBUG nextflow.Session - Session aborted -- Cause: Missing required parameter: --sampleid
+Sep-03 10:26:49.106 [main] DEBUG n.trace.WorkflowStatsObserver - Workflow completed > WorkflowStats[succeededCount=0; failedCount=0; ignoredCount=0; cachedCount=0; pendingCount=0; submittedCount=0; runningCount=0; retriesCount=0; abortedCount=0; succeedDuration=0ms; failedDuration=0ms; cachedDuration=0ms;loadCpus=0; loadMemory=0; peakRunning=0; peakCpus=0; peakMemory=0; ]
+Sep-03 10:26:49.108 [main] ERROR nextflow.cli.Launcher - Missing required parameter: --sampleid
+java.lang.IllegalArgumentException: Missing required parameter: --sampleid
+	at nextflow.script.ProcessEntryHandler.getValueForInputV1(ProcessEntryHandler.groovy:295)
+	at nextflow.script.ProcessEntryHandler.getProcessArgumentsV1(ProcessEntryHandler.groovy:224)
+	at nextflow.script.ProcessEntryHandler.getProcessArguments(ProcessEntryHandler.groovy:161)
+	at nextflow.script.ProcessEntryHandler.access$2(ProcessEntryHandler.groovy)
+	at nextflow.script.ProcessEntryHandler$_createEntryWorkflow_closure1$_closure8.doCall(ProcessEntryHandler.groovy:80)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at org.codehaus.groovy.reflection.CachedMethod.invoke(CachedMethod.java:343)
+	at groovy.lang.MetaMethod.doMethodInvoke(MetaMethod.java:328)
+	at org.codehaus.groovy.runtime.metaclass.ClosureMetaClass.invokeMethod(ClosureMetaClass.java:280)
+	at groovy.lang.MetaClassImpl.invokeMethod(MetaClassImpl.java:1009)
+	at groovy.lang.Closure.call(Closure.java:433)
+	at groovy.lang.Closure.call(Closure.java:412)
+	at nextflow.script.WorkflowDef.run0(WorkflowDef.groovy:204)
+	at nextflow.script.WorkflowDef.run(WorkflowDef.groovy:187)
+	at nextflow.script.BindableDef.invoke_a(BindableDef.groovy:51)
+	at nextflow.script.BaseScript.run0(BaseScript.groovy:271)
+	at nextflow.script.BaseScript.run(BaseScript.groovy:282)
+	at nextflow.script.parser.v2.ScriptLoaderV2.runScript(ScriptLoaderV2.groovy:99)
+	at nextflow.script.parser.v2.ScriptLoaderV2.runScript(ScriptLoaderV2.groovy)
+	at nextflow.script.ScriptRunner.run(ScriptRunner.groovy:229)
+	at nextflow.script.ScriptRunner.execute(ScriptRunner.groovy:128)
+	at nextflow.cli.CmdRun.run(CmdRun.groovy:441)
+	at nextflow.cli.Launcher.run(Launcher.groovy:526)
+	at nextflow.cli.Launcher.main(Launcher.groovy:686)

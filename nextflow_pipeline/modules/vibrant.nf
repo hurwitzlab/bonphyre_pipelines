@@ -15,10 +15,11 @@
     shell:
     '''
     python3 ../VIBRANT_run.py \
-    -i ${contigs} \
+    -i !{contigs} \
     -f !{params.vibrant_f} \
     -l !{params.vibrant_minlength} \
     -o !{params.vibrant_minorfspercontig} \
     -t !{task.cpus} \
     -folder .
     '''
+}

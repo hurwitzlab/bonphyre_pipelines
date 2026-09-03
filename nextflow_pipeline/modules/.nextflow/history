@@ -1,0 +1,9 @@
+2026-09-03 10:26:40	-	deadly_curry	-	ea0b2fef0d3af515313a8b16f554e211	986d1892-f42a-40e8-953d-9f778c992842	nextflow run bbmap.nf
+2026-09-03 10:26:41	-	extravagant_boltzmann	-	8bba954e552e3d913140fbc6470d03b4	b6226eab-efb7-4674-add1-30d56904f3a0	nextflow run bwa.nf
+2026-09-03 10:26:43	-	focused_moriondo	-	6df9139cf2d7f11b0ba88f59b28653f4	1dbf64e4-2050-455e-9494-d0f1c0608c6b	nextflow run checkv.nf
+2026-09-03 10:26:44	-	zen_kalman	-	a25bd6f548651b237f6d5018180c05f1	f04b24f2-ce33-437e-afee-1e377b685d8d	nextflow run coverm.nf
+2026-09-03 10:26:46	-	voluminous_volhard	-	9244ef62ae79b28bc23502cc4a2420e9	6f762217-11cf-4b09-b27f-cd27f7224183	nextflow run deepvirfinder.nf
+2026-09-03 10:26:47	-	stupefied_shannon	-	1fc86d82acfe9c76b107d65c83840a76	a417e8b0-ff02-4c88-86c8-83c6dbb8ce57	nextflow run genomad.nf
+2026-09-03 10:26:48	-	irreverent_davinci	-	c34e909520496bab657eee1e98c2895f	eb345b97-6018-4713-8eb3-1fa0ef4f33e1	nextflow run marvel.nf
+2026-09-03 10:26:50	-	nice_jepsen	-	23d6644ea9308dea4464fce031a8b92f	5b6e0722-8a42-45cb-ba23-f2ce8348a925	nextflow run vibrant.nf
+2026-09-03 10:26:51	-	nasty_leavitt	-	b77aa60343b8bc2c5cfca7913f6f2a00	d676b3d9-15df-4905-bd3b-6b3661f001b6	nextflow run virsorter2.nf

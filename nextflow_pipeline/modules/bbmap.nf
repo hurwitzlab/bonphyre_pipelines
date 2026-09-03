@@ -19,9 +19,9 @@
     in=!{clean_r1} \
     in2=!{clean_r2} \
     out=!{sampleid}_aln.sam.gz \
-    kfilter=!{params.bbwrap_kfilter} \
-    subfilter=!{params.bbwrap_subfilter} \
-    maxindel=!{params.bbwrap_maxindel}  \
+    kfilter=!{params.bbmap_kfilter} \
+    subfilter=!{params.bbmap_subfilter} \
+    maxindel=!{params.bbmap_maxindel}  \
     nodisk
     '''
 }

@@ -1,12 +1,11 @@
 #!/usr/bin/env nextflow
-//run with: 
-//    // assuming some upstream channel emits (sampleid, bam) tuples
-    // bam_ch
-    //     .map { sampleid, bam -> bam }
-    //     .collect()
-    //     .set { all_bams }
 
-    // coverm(all_bams)
+// Run with: assuming some upstream channel emits (sampleid, bam) tuples
+//   bam_ch
+//     .map { sampleid, bam -> bam }
+//     .collect()
+//     .set { all_bams }
+//   coverm(all_bams)
 
 // Estimating relative abundance of vOTUs with CoverM (merged across all BAMs)
 process coverm {
@@ -21,12 +20,16 @@ process coverm {
 
     shell:
     '''
-    coverm !{params.coverm_sequence} \ # sequence type
+    # coverm_sequence: sequence type
+    # coverm_m: metric, e.g. count
+    # coverm_minident: min-read-percent-identity, e.g. 0.95
+    # coverm_minlen: min-read-aligned-length, e.g. 45
+    coverm !{params.coverm_sequence} \
     -b !{bam_files} \
     -t !{task.cpus} \
-    -m !{params.coverm_m} \ #count
-    --min-read-percent-identity !{params.coverm_minident} \ # 0.95
-    --min-read-aligned-length !{params.coverm_minlen} \      # 45
+    -m !{params.coverm_m} \
+    --min-read-percent-identity !{params.coverm_minident} \
+    --min-read-aligned-length !{params.coverm_minlen} \
     > votus_count_table.txt
     '''
 }
