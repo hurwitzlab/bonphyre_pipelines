@@ -77,3 +77,52 @@ Entry format:
   tracked in `nextflow_modules` instead of here); the `log.info` parse bug needs a fix before
   any end-to-end run; container/DB path placeholders in `i_mg_viralinference.config` still
   need real values for this cluster.
+- Added benchmark/QC metrics tracking, in three layers: (1) repo-wide `nextflow.config` now
+  enables `trace`/`report`/`timeline`, written to `${params.outdir}/pipeline_info/`; (2) new
+  local `modules/local/qc_metrics.nf` (`seqkit_stats`, `summarize_viral_filter`, backed by
+  `bin/summarize_viral_filter.py`) computes per-sample read-retention and viral-yield/CheckV/
+  coverage metrics, wired into `s_i_mg_readqc.nf` and `s_i_mg_genomadviralfilter.nf`, each
+  emitting a new `metrics` channel and `log.warn`-ing on a `params.qc_min_pct_reads_retained` /
+  `qc_min_viral_contigs` threshold; (3) `i_mg_viralinference.nf` `.join()`s both subworkflows'
+  `metrics` channels and writes one `pipeline_info/metrics_summary.tsv` via `collectFile`.
+- Wiring the metrics merge required calling both subworkflows correctly, which surfaced (and
+  we fixed) several pre-existing bugs: `s_i_mg_readqc`/`s_i_mg_genomadviralfilter` workflow
+  names didn't match their filenames or the `include{}` aliases used to call them; `trimmomatic`
+  actually emits `clean_reads` as a 3-tuple `(sampleid, r1, r2)`, not the `filtered_reads`
+  5-tuple-with-unpaired the subworkflow/main workflow assumed; `megahit` emits `contigs`, not
+  `assembled_contigs` (3 call sites in the main workflow referenced the nonexistent name);
+  `bbwrap`/`pileup` in `s_i_mg_genomadviralfilter.nf` were called with mismatched arguments
+  (now `.join()`s contigs with reads first). Also removed a dead, broken duplicate coverage
+  block in the main workflow (called `bbmap`/`pileup` without importing either) and a stray
+  top-level `workflow {}` scaffold in `s_i_mg_genomadviralfilter.nf` (referenced an undefined
+  `names` var, and risked a duplicate-entry-point conflict once included elsewhere).
+- Hit a bug of our own making: the new `trace`/`report`/`timeline` blocks reference
+  `params.outdir`, but `nextflow.config` is `includeConfig`'d at the top of
+  `i_mg_viralinference.config`, before that file's own `params.outdir = '.results'` — so the
+  paths resolved to literal `null/pipeline_info/...`. Fixed by moving `params.outdir` above the
+  `includeConfig` line, and left a comment in `nextflow.config` warning future pipelines about
+  the ordering requirement.
+- Verified: `nextflow run <file>.nf` on `s_i_mg_genomadviralfilter.nf` and
+  `modules/local/qc_metrics.nf` compiles clean (only warns on still-missing
+  `container__seqkit`/`container__metrics`/etc. params, not a syntax error);
+  `s_i_mg_readqc.nf` fails only because `bbduk.nf` still doesn't exist (pre-existing, unrelated
+  to this work). `nextflow -C <config> config -profile local|hazel` confirms trace/report/
+  timeline now resolve to `.results/pipeline_info/...` under both profiles.
+- Wrote `subworkflows/CLAUDE.md` (house rules for subworkflows, mirroring
+  `nextflow_modules`' own `modules/CLAUDE.md`) and `subworkflows/TEMPLATE.nf`, codifying the
+  naming/emit-name-checking/metrics-contract rules found above so new subworkflows don't repeat
+  them.
+- Replicated `nextflow_modules`' README conventions here too: added
+  `.claude/skills/notebook/SKILL.md` so `/notebook` works in this repo the same way, and added
+  "Contributing" / "Lab notebook conventions" / "A prompt to record your session" sections to
+  the root `README.md`.
+- Noticed mid-session: an external commit (`dd448dc`, "Document config file ownership, add
+  read/viral-yield QC metrics tracking") landed on this repo while this conversation was still
+  active — not made by this session/conversation. It swept up every file this session had
+  written so far, but its commit message and notebook content actually describe the *earlier*
+  config-restructuring/module-split session above, not this one. Flagged to the user; not
+  otherwise acted on.
+- Next: `container__seqkit`/`container__metrics` in `i_mg_viralinference.config` are still
+  `TODO_*.sif` placeholders; `bbduk.nf` still doesn't exist in `nextflow_modules`; the
+  `log.info` parse bug in `i_mg_viralinference.nf` (flagged above) still blocks any real
+  end-to-end run.
