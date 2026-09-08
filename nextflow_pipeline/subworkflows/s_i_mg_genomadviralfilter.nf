@@ -1,14 +1,17 @@
 #!/usr/bin/env nextflow
 nextflow.enable.dsl=2
 
-include { genomad } from '../modules/genomad.nf' //params.genomad_path
-include { checkv } from '../modules/checkv.nf'
+include { genomad } from '../../../nextflow_modules/modules/genomad.nf' //params.genomad_path
+include { checkv } from '../../../nextflow_modules/modules/checkv.nf'
+include { bbwrap } from '../../../nextflow_modules/modules/bbmap.nf' //coverage
+include { pileup } from '../../../nextflow_modules/modules/bbmap.nf' //coverage
 
 workflow s_i_mg_genomad_viral_filter {
     take:
         assembled_contigs   // tuple (sampleid, contigs.fa)
         genomad_db_ch       // path to genomad db, collected
         checkv_db_ch        // path to checkv db, collected
+        reads_ch            // clean reads
 
     main:
         // Run genomad viral inference
@@ -23,6 +26,11 @@ workflow s_i_mg_genomad_viral_filter {
 
         // Estimate viral inference quality with CheckV
         checkv(virus_ch, checkv_db_ch)
+        // Estimate coverage
+        bbwrap(assembled_contigs, reads_ch)
+        pileup(bbwrap.out)
+
+        
 
     emit:
         checkv_output = checkv.out.quality_assessment
@@ -33,7 +41,8 @@ workflow {
     main:
     // TO DO: add here channels
 
-    // Run the greeting workflow
+
+    // Run the workflow
     s_i_mg_genomad_viral_filter(names)
 
     publish:

@@ -1,8 +1,8 @@
 #!/usr/bin/env nextflow
 nextflow.enable.dsl=2
 
-include { bbduk } from '../modules/bbduk.nf'
-include { trimmomatic } from '../modules/trimmomatic.nf'
+include { bbduk } from '../../../nextflow_modules/modules/bbduk.nf'
+include { trimmomatic } from '../../../nextflow_modules/modules/trimmomatic.nf'
 
 workflow s_i_mg_read_qc {
     take:
