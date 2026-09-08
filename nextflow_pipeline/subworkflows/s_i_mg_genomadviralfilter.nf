@@ -5,13 +5,14 @@ include { genomad } from '../../../nextflow_modules/modules/genomad.nf' //params
 include { checkv } from '../../../nextflow_modules/modules/checkv.nf'
 include { bbwrap } from '../../../nextflow_modules/modules/bbmap.nf' //coverage
 include { pileup } from '../../../nextflow_modules/modules/bbmap.nf' //coverage
+include { summarize_viral_filter } from '../modules/local/qc_metrics.nf'
 
-workflow s_i_mg_genomad_viral_filter {
+workflow s_i_mg_genomadviralfilter {
     take:
         assembled_contigs   // tuple (sampleid, contigs.fa)
         genomad_db_ch       // path to genomad db, collected
         checkv_db_ch        // path to checkv db, collected
-        reads_ch            // clean reads
+        reads_ch            // clean reads, tuple (sampleid, r1, r2)
 
     main:
         // Run genomad viral inference
@@ -26,28 +27,34 @@ workflow s_i_mg_genomad_viral_filter {
 
         // Estimate viral inference quality with CheckV
         checkv(virus_ch, checkv_db_ch)
-        // Estimate coverage
-        bbwrap(assembled_contigs, reads_ch)
-        pileup(bbwrap.out)
 
-        
+        // Estimate coverage: align clean reads back to the assembly, then pileup.
+        // bbwrap needs (sampleid, contigs, r1, r2), so join contigs with reads by sampleid.
+        bbwrap_ch = assembled_contigs
+            .join(reads_ch)
+            .map { sampleid, contigs, r1, r2 -> tuple(sampleid, contigs, r1, r2) }
+        bbwrap(bbwrap_ch)
+        pileup(bbwrap.out.mapped_files)
+
+        // QC/benchmark metric: contigs assembled vs. flagged viral, mean CheckV
+        // completeness, mean coverage — flags samples with poor viral yield.
+        checkv_tsv_ch = checkv.out.quality_assessment
+            .map { sampleid, checkv_dir -> tuple(sampleid, file("${checkv_dir}/quality_summary.tsv")) }
+
+        metrics_input_ch = assembled_contigs
+            .join(checkv_tsv_ch)
+            .join(pileup.out.pileuped_files)
+
+        metrics_ch = summarize_viral_filter(metrics_input_ch).summary
+            .map { sampleid, row ->
+                def (n_contigs, n_viral, mean_completeness, mean_coverage) = row.tokenize('\t')
+                if (n_viral.toInteger() < params.qc_min_viral_contigs) {
+                    log.warn "QC: sample ${sampleid} had only ${n_viral} contig(s) pass genomad/checkv out of ${n_contigs} assembled"
+                }
+                tuple(sampleid, row)
+            }
 
     emit:
         checkv_output = checkv.out.quality_assessment
+        metrics       = metrics_ch   // (sampleid, "n_contigs\tn_viral\tmean_completeness\tmean_coverage")
 }
-
-
-workflow {
-    main:
-    // TO DO: add here channels
-
-
-    // Run the workflow
-    s_i_mg_genomad_viral_filter(names)
-
-    publish:
-    s_i_mg_genomad_viral_filter_output = s_i_mg_genomad_viral_filter.out
-}
-
-
-// TO DO: ADD COVERAGE AND MERGEANDFINAL!!!

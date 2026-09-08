@@ -78,46 +78,27 @@ workflow {
     // Run read QC subworkflow: trim and filter reads
     s_i_mg_readqc(reads_ch, adapters_ch)
 
-    // Extract only paired reads (drop unpaired) for megahit
-    // The full tuple is (sampleid, r1, unpaired1, r2, unpaired2) — we destructure all 5 elements
-    // but only return (sampleid, r1, r2), effectively dropping the unpaired reads from the channel.
-    // Note: unpaired files are not deleted — they remain in work/ and in publishDir if enabled.
-    paired_ch = s_i_mg_readqc.out.filtered_reads
-    .map { sampleid, r1, unpaired1, r2, unpaired2 -> 
-        tuple(sampleid, r1, r2) 
-    }
+    // trimmomatic.clean_reads is already (sampleid, r1, r2) -- no unpaired reads to drop.
+    paired_ch = s_i_mg_readqc.out.reads
 
     // Assemble paired reads into contigs with MEGAHIT.
     megahit(paired_ch)
 
-    // Run genomad viral inference and filtering
-    genomad_viral_filter(megahit.out.assembled_contigs, genomad_db_ch, checkv_db_ch)
+    // Run genomad viral inference + filtering (includes its own coverage/QC-metric steps)
+    s_i_mg_genomadviralfilter(megahit.out.contigs, genomad_db_ch, checkv_db_ch, paired_ch)
 
+    // Combine every subworkflow's per-sample metrics into one wide row per sample
+    // and write it out as a single benchmark/QC summary table.
+    all_metrics_ch = s_i_mg_readqc.out.metrics
+        .join(s_i_mg_genomadviralfilter.out.metrics)
+        .map { sampleid, readqc_row, viral_row -> "${sampleid}\t${readqc_row}\t${viral_row}" }
 
-
-    //--> put following into subworkflow genomad
-    // 8. Filter viral inferences based on output from checkV, coverage, and contig length
-        
-        // a. Calculate the coverage of contigs
-        // Combine trimmomatic paired reads with megahit contigs by sampleid for coverage calculation.
-        // join() matches tuples from both channels on sampleid, producing:
-        // (sampleid, r1, r2, contigs)
-    bbmap_ch = paired_ch
-        .join(megahit.out.assembled_contigs)
-        .map { sampleid, r1, r2, contigs ->
-            tuple(sampleid, r1, r2, contigs)
-        }
-
-        // Calculate read coverage against assembled contigs with bbmap and pileup
-    bbmap(bbmap_ch)
-
-    pileup(bbmap.out.mapped_sequences, megahit.out.assembled_contigs) 
-
-
-        // b. Run the filter and retrieve fasta sequences subprocess
-        
-
-    
+    all_metrics_ch.collectFile(
+        name: 'metrics_summary.tsv',
+        storeDir: "${params.outdir}/pipeline_info",
+        newLine: true,
+        seed: "sampleid\traw_reads\tclean_reads\tpct_reads_retained\tn_contigs\tn_viral\tmean_completeness\tmean_coverage"
+    )
 
 }
 

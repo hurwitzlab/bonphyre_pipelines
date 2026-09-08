@@ -20,6 +20,23 @@ tool modules by relative path (e.g. `../../../nextflow_modules/modules/genomad.n
 so this layout isn't optional — if `nextflow_modules` isn't cloned in exactly
 this location, every include fails at parse time.
 
+## Which config do I edit?
+
+There are four config files in this repo. As someone *running* a pipeline
+(not developing one), you'll only ever touch the first one:
+
+| File | What it holds | Who edits it, and when |
+|---|---|---|
+| `conf/site.config` | `databases_dir`, `singularity_images_dir` — where your reference databases and container images live on disk | **You, once**, the first time you run any pipeline here on a new machine/cluster. This is the file. |
+| `workflows/<name>/<name>.config` | That pipeline's tool params (`bbduk_k`, `megahit_kmin`, ...), I/O defaults (`reads`, `outdir`), and container references | The pipeline's maintainer, when adding/changing a tool or its default settings. As a runner, you'd only touch this to change a *default* permanently — day-to-day tweaks go through `--flags` instead (see below), not this file. |
+| `nextflow.config` (repo root) | Profiles (`hazel`, `local`) and `includeConfig` wiring that pulls `site.config`/`base.config` into every pipeline | Rarely — only when adding support for a new cluster/executor. Not something you edit to run an existing pipeline. |
+| `conf/base.config` | Default CPU/memory/time per resource tier (`process_single/low/medium/high`), shared by every pipeline | Rarely — only if the lab's actual hardware/typical job sizes change lab-wide. |
+
+In short: **`conf/site.config` is the one file you edit to use these
+pipelines.** Everything else is either plumbing you never touch, or a
+per-pipeline default that a maintainer sets and you override at the command
+line instead of editing.
+
 ## Running a pipeline
 
 **The only file you need to edit is `conf/site.config`, and only the first
