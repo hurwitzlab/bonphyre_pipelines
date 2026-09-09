@@ -124,3 +124,55 @@ That distinction is the whole point of the layering:
 Naming it after what it configures (the site) rather than something generic
 like `local.config` or `env.config` makes it unambiguous which of the three
 files a new user is supposed to touch.
+
+## To Do
+
+### Decide: wire `manifests/` into `publishDir`, or keep it declarative?
+
+`manifests/` (see `manifest_i_mg_viralinference.nf` and its per-subworkflow
+manifests) currently just *declares* a target per-sample output layout
+(`<sampleid>/fastq/clean_r1.fastq`, etc.) as plain Groovy maps — nothing
+reads them. Every process's actual output location is still set by its own
+`publishDir`, using the flat, tool-named `params.*_outdir` values in each
+pipeline's `.config` (`trimmomatic_outdir`, `megahit_outdir`, ...), with the
+sample ID baked into the filename rather than a per-sample directory.
+
+Open question: leave it declarative (documentation of intent only), or
+rewire `publishDir` to actually build its path from the manifest.
+
+**Keep today's flat, tool-named `publishDir` layout (status quo)**
+- 👍 No migration cost or breakage risk — nothing currently running or
+  documented (including this README's own config table) depends on paths
+  changing.
+- 👍 Simple mental model: one output dir per tool, matching the convention
+  every module in the shared, lab-wide `nextflow_modules` repo already
+  follows.
+- 👍 No cross-pipeline coordination needed — each module independently owns
+  its `publishDir`.
+- 👎 Outputs from different samples interleave in the same directory
+  (filenames, not folders, carry the sample ID) — doesn't scale cleanly as
+  sample count grows, no single "everything for sample X" folder to hand off
+  or archive.
+- 👎 Path knowledge is scattered — finding sample X's CheckV output means
+  knowing the config value *and* the filename convention, not reading one
+  file.
+
+**Rewire `publishDir` to consume the manifest (per-sample layout)**
+- 👍 One place decides every output path — the payoff the crash-course
+  convention is built around: predictable, queryable structure, and a
+  foundation for emitting a `manifest.json` per sample later.
+- 👍 Easier to reason about "everything for sample X" as one directory tree
+  (archiving, handoff, QC review).
+- 👎 Real engineering work, and not contained to this repo: `publishDir` in
+  shared `nextflow_modules` modules would need to become dynamic per sample
+  (e.g. `publishDir { "${params.outdir}/${sampleid}/fastq" }`) — since those
+  modules are shared lab-wide, this has blast radius beyond just this
+  pipeline and needs care not to break other pipelines relying on their
+  current `publishDir` behavior.
+- 👎 Existing per-tool `*_outdir` params in each `.config` become redundant
+  or need redesigning — a breaking config change for anyone already running
+  a pipeline here.
+- 👎 No urgency signal yet: nothing reads the manifest today, and the
+  crash-course itself defers this same wiring "until you're writing
+  pipelines of your own, past the point where 5-6 processes fit comfortably
+  in your head."

@@ -126,3 +126,88 @@ Entry format:
   `TODO_*.sif` placeholders; `bbduk.nf` still doesn't exist in `nextflow_modules`; the
   `log.info` parse bug in `i_mg_viralinference.nf` (flagged above) still blocks any real
   end-to-end run.
+
+---
+
+## 2026-09-09
+
+- Adopted the `getManifest()` output-path convention from
+  `nextflow_crash_course/day2_material` (a Groovy map naming every real output path, not
+  Nextflow's built-in `manifest {}` config block). Added `nextflow_pipeline/manifests/` with
+  `manifest_s_i_mg_readqc.nf`, `manifest_s_i_mg_genomadviralfilter.nf`, and a top-level
+  `manifest_i_mg_viralinference.nf` that composes them plus the paths the workflow owns
+  directly (`contigs` from `megahit`, `pipeline_info/metrics_summary.tsv`). Every path was
+  traced to a real filename in the module source (or marked as an inferred/standard tool
+  output, e.g. CheckV's undocumented-here `completeness.tsv`/`contamination.tsv`/etc.);
+  `take:`-only inputs and the per-subworkflow `metrics` channel (which `subworkflows/CLAUDE.md`
+  already documents as never hitting disk on its own) were deliberately excluded.
+- Found a real bug while doing this: the crash-course's own pattern for merging sub-manifests
+  (Groovy's spread-map operator, `*:getX()` inside a map literal) does **not** parse under
+  Nextflow's strict script parser — confirmed with an isolated repro against installed
+  Nextflow 26.04.6 (`Unexpected input: '*'`). Used plain map `+` merging in
+  `manifest_i_mg_viralinference.nf` instead (equivalent; right-hand side wins on key clashes).
+  Every manifest file was verified with `nextflow run <file>.nf` (`[SUCCESS]
+  completed=0 failed=0 cached=0`, no compile error).
+- These manifests are declarative only, matching the crash-course's own choice not to wire
+  `getManifest()` into `publishDir` yet — today's modules still publish flat, tool-named dirs
+  from `params.*_outdir`. Added a "To Do" section to `nextflow_pipeline/README.md` laying out
+  the pros/cons of keeping it that way vs. rewiring `publishDir` per sample (the real cost:
+  `publishDir` in shared, lab-wide `nextflow_modules` would need to become dynamic per sample,
+  which has blast radius beyond this pipeline) -- left as an open decision, not made today.
+- Added `.claude/skills/manifest/SKILL.md`, a project skill (`/manifest`) that codifies the
+  process above (trace to real module output, exclude inputs/non-file values, per-sample
+  relative paths, `+` not `*:`, parse-verify with `nextflow run`) so future subworkflows get a
+  manifest the same way. Also mirrored into the personal `claude-skills` repo as a portable
+  skill (tracked/logged separately there, not detailed here).
+- Found and fixed an unrelated bug while committing: `.gitignore`'s Python-template `MANIFEST`
+  rule was silently ignoring the whole new `.claude/skills/manifest/` directory (case-insensitive
+  match on macOS's default case-insensitive filesystem) -- `git status` showed nothing for it
+  until this was caught. Added a narrow `!.claude/skills/manifest/` / `!.claude/skills/manifest/**`
+  negation; confirmed with `git check-ignore` and `git status` that the file is now trackable.
+- Next: the manifest/`publishDir` wiring decision in the new README "To Do" section needs a
+  call from the user before any code changes there. Remaining subworkflows (there are currently
+  only the two covered) would get a manifest via `/manifest` as they're added.
+- Added `nextflow_pipeline/build.sh`: one generic script, parameterized by workflow name
+  (`build.sh i_mg_viralinference <output_dir>`), that isolates exactly the files a workflow
+  needs to run. Walks the `include{}`/`includeConfig` graph from the workflow's `.nf` and
+  `.config` (covers subworkflows, local modules, shared `nextflow_modules` tool modules, and
+  the config chain in one pass, since both statement types are just relative-path references),
+  then separately pulls in any `bin/` script referenced by name in a collected file's shell
+  block. Copies the closure into `<output_dir>` preserving the existing sibling layout
+  (`nextflow_modules/` next to `viral_inference_benchmark/`) so every include resolves
+  unmodified — nothing is copied by directory-globbing, only what's actually reachable.
+- Found (and fixed) a second real, previously-undetected bug while first testing this against
+  `i_mg_viralinference`: `include { s_i_mg_readqc }` / `include { s_i_mg_genomadviralfilter }`
+  in `i_mg_viralinference.nf` used `../subworkflows/...` (one level up) when the real path is
+  two levels up (`../../subworkflows/...`) — off by one directory versus the `megahit` include
+  right next to them, which correctly uses four `../` to reach the sibling `nextflow_modules`
+  repo. Nextflow itself never caught this because it dies first on the already-known
+  `log.info`/`pub` top-level-statement bug (2026-09-08 entry) before ever reaching include
+  resolution; the build script's own path resolution isn't fooled by that and surfaced it
+  immediately as "dependency not found". Fixed both include paths.
+- Verified end-to-end using a throwaway stub `bbduk.nf` (deleted immediately after; confirmed
+  via `git status` in `nextflow_modules` before/after that nothing real was left behind, since
+  that module genuinely doesn't exist yet and blocks a real run either way): the script
+  discovered 14 include-graph files + 1 referenced `bin/` script
+  (`summarize_viral_filter.py`; the other two `bin/` scripts aren't referenced anywhere and were
+  correctly left out), copied all 15 into a clean tree, and ran its `nextflow run` validation
+  step. That validation failed on exactly the known `log.info`/`pub` bug (confirmed by
+  comparing log text) — proving the build's file closure is complete and correct; a truly
+  missing dependency would fail differently (e.g. "unable to resolve module").
+- First validation attempt left Nextflow's own run litter (`.nextflow/`, `.nextflow.log`,
+  `.results/`) inside the isolated copy itself, defeating the point of an isolated copy; fixed
+  by running the validation step from a `mktemp -d` scratch directory instead (Nextflow resolves
+  `include` paths relative to the file, not the invocation cwd, so this doesn't change what gets
+  checked). Also softened the script's own guidance text: Nextflow's generic "Script compilation
+  failed" banner fires for both a missing include *and* an unrelated structural error like the
+  `log.info` bug, so the script now says to read the specific message rather than implying the
+  banner alone means a dependency is missing.
+- Also found and cleaned up, unrelated to the script itself: my own earlier manual
+  `nextflow run i_mg_viralinference.nf` (done directly in the real repo, before `build.sh`
+  existed, to check whether the include paths resolved) had left `.nextflow/`, `.nextflow.log`,
+  and `.results/` sitting in the real `workflows/i_mg_viralinference/` directory. Deleted; `git
+  status` confirms only the intended files remain changed/untracked.
+- Next: the `log.info`/`pub` bug (flagged 2026-09-08, still unfixed) is now the only known
+  blocker to a clean `nextflow run` on `i_mg_viralinference.nf`, isolated copy or not.
+  `i_mg_bacterialclassification` is still an empty workflow stub, so `build.sh` only has one
+  real workflow to target today.

@@ -26,6 +26,11 @@ share/python-wheels/
 *.egg
 MANIFEST
 
+# The Python "MANIFEST" rule above matches our .claude/skills/manifest/ directory
+# case-insensitively on case-insensitive filesystems (e.g. default macOS) -- un-ignore it.
+!.claude/skills/manifest/
+!.claude/skills/manifest/**
+
 # PyInstaller
 #   Usually these files are written by a python script from a template
 #   before PyInstaller builds the exe, so as to inject date/other infos into it.

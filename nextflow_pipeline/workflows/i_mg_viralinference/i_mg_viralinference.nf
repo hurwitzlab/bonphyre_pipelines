@@ -48,9 +48,9 @@ if ( params.help ){
 
 
 // Import processes from module files
-include { s_i_mg_readqc } from '../subworkflows/s_i_mg_readqc.nf'
+include { s_i_mg_readqc } from '../../subworkflows/s_i_mg_readqc.nf'
 include { megahit } from '../../../../nextflow_modules/modules/megahit.nf'
-include { s_i_mg_genomadviralfilter } from '../subworkflows/s_i_mg_genomadviralfilter.nf'
+include { s_i_mg_genomadviralfilter } from '../../subworkflows/s_i_mg_genomadviralfilter.nf'
 
 workflow { 
 
