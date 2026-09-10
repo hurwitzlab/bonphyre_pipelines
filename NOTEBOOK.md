@@ -211,3 +211,126 @@ Entry format:
   blocker to a clean `nextflow run` on `i_mg_viralinference.nf`, isolated copy or not.
   `i_mg_bacterialclassification` is still an empty workflow stub, so `build.sh` only has one
   real workflow to target today.
+
+## 2026-09-10
+- Made the call flagged in the 2026-09-09 "To Do": rewired `manifests/` into `publishDir`
+  (per-sample layout) rather than leaving it declarative, accepting the blast-radius risk
+  that entry called out for shared `nextflow_modules`. `s_i_mg_readqc.nf` and
+  `s_i_mg_genomadviralfilter.nf` now each read their own subworkflow manifest and set
+  `params.<tool>_outdir` to a per-sample Closure (`{ sid -> "${params.outdir}/${sid}/..." }`)
+  before calling `trimmomatic`/`megahit`/`genomad`/`checkv`/`pileup`; `i_mg_viralinference.nf`
+  does the same for `megahit_outdir` from the top-level manifest. Matching this closure
+  convention into the shared `nextflow_modules` modules themselves (and the compliance sweep
+  across the rest of that repo) is logged in `nextflow_modules/NOTEBOOK.md`, not repeated here.
+- Full fidelity to the manifest's declared paths required editing `genomad`/`checkv`/`megahit`'s
+  own output-path declarations in `nextflow_modules` too — they baked `sampleid` into their own
+  relative output path, which double-nested once `publishDir` also became sample-scoped. Fixing
+  that surfaced (and fixed) a real bug in `s_i_mg_genomadviralfilter.nf`'s `virus_ch` mapping,
+  which depended on that now-removed extra nesting.
+- Later removed tool names from the manifest entirely (both map keys and declared paths) and
+  re-wired `publishDir`/module output naming to match — `viral_filter/genomad` and
+  `viral_filter/checkv` collapsed to flat `contigs_summary`/`quality` siblings directly under
+  `viral_filter/`, `bbduk_trimmed_r1/r2` → `adapter_trimmed_r1/r2`. This became possible
+  mid-session when `bbduk` became a real module (merged into `nextflow_modules`' `bbmap.nf` by
+  the repo owner) — until then it was the one manifest entry that couldn't be wired at all.
+  Fixed `s_i_mg_readqc.nf`'s `include` (pointed at a `bbduk.nf` that never existed) and a real
+  `bbduk.out.trimmed_reads`/`.clean_reads` emit-name mismatch that had never been exercised
+  against a real module before now.
+- Restructured `i_mg_viralinference.config` so `params.outdir` is built from a data-lake root:
+  `"${data_lake_dir}/<project_id>/<pipeline_name>/<workflow_version>"`. Added
+  `params.data_lake_dir` (TODO placeholder, same pattern as `databases_dir`/
+  `singularity_images_dir`) to `conf/site.config`. Empirically tested two Nextflow
+  config-parsing constraints before relying on them, both against the installed 26.04.6:
+  a config file cannot read `manifest {}`'s own fields back from within `params {}` (tested,
+  fails to parse — `manifest is not defined`), but `manifest {}` **can** read `params {}` values
+  set earlier in the same file (tested, works) — so `params.pipeline_name`/`workflow_version`
+  became the single source of truth, with `manifest {}` reading them back, not the reverse.
+  Also confirmed `if`/`exit` are not valid config-file syntax at all (hard parse error:
+  "statements cannot be mixed with config statements") — moved the required-`--project_id`
+  check into the `.nf` workflow instead, after confirming a missing value would otherwise
+  silently render as the literal string `"null"` in the `outdir` path rather than erroring.
+  Updated `README.md`'s config docs and running-a-pipeline example (`--outdir` replaced by
+  required `--project_id`).
+- Fixed the `log.info`/`pub` bug flagged unfixed in both the 2026-09-08 and 2026-09-09 entries
+  above — it's what was actually blocking every `nextflow run` on this workflow this whole time.
+  Root cause confirmed via `git diff` against unmodified `HEAD` (identical failure, so this
+  predates today): `i_mg_viralinference.nf` mixed top-level imperative statements (a `log.info`
+  banner, two `if`-checks including the new `--project_id` one above) with declarations, which
+  this installed Nextflow version's strict parser rejects outright
+  ("Statements cannot be mixed with script declarations"). Fixed by moving that logic into the
+  first lines of `workflow {}`. Also fixed the `pub` half of the bug while in there: a bare
+  undefined `${pub}` in the banner, should have been `${params.outdir}`. Verified by actually
+  running the pipeline end-to-end (not just standalone-parsing) in two paths — missing
+  `--project_id` correctly banners then errors out cleanly before any process runs; `--help`
+  correctly prints the banner (with the right interpolated `outdir`) and usage text.
+- Next: `bbstats` (new, alongside `bbduk`, in `nextflow_modules`' `bbmap.nf`) isn't wired into
+  any manifest or subworkflow yet — no manifest entry declares a path for it and nothing calls
+  it. `i_mg_bacterialclassification` is still an empty stub. None of today's changes are
+  committed yet.
+- Refactored `publishDir` handling from per-process directives to a centralized,
+  label-based system, per an explicit ask to investigate first: found 4 config
+  files total, and `conf/base.config` as the only file already hosting a
+  `withLabel:` convention (`process_single/low/medium/high` resource tiers) — so
+  that's where the new convention went too, per instruction not to pick a
+  location unilaterally.
+- `bbduk`/`trimmomatic`/`megahit`/`genomad`/`checkv`/`pileup` (in the sibling
+  `nextflow_modules` repo) now carry a second label —
+  `publish_intermediate`/`publish_final` — instead of an in-module `publishDir`.
+  `conf/base.config`'s new `withLabel:publish_intermediate`/
+  `withLabel:publish_final` blocks give each its actual `publishDir`, dispatched
+  per-process via `task.process`. Tier for each was confirmed with the user
+  per-process, not guessed: `bbduk`=intermediate; the other 5=final, including
+  two genuinely close calls (`trimmomatic`, `megahit`) that could reasonably
+  have gone either way. Added `publish_mode_intermediate` (default `'symlink'`)
+  and `publish_mode_final` (default `'copy'`) params, matching this repo's
+  existing naming style, giving per-tier control without touching any module or
+  subworkflow.
+- The dispatch generalizes the existing `instanceof Closure` convention
+  (`params.<tool>_outdir` may be a plain path or a Closure taking `sampleid`)
+  into one shared resolver in `conf/base.config`, rather than losing that
+  flexibility — verified this actually works with real per-sample paths via
+  isolated scratch testing *before* touching the real config: a config-level
+  closure genuinely can see a process's own `sampleid`; `task.process` needed
+  stripping of its subworkflow-qualified prefix (`"s_i_mg_readqc:trimmomatic"`,
+  not just `"trimmomatic"`) for dynamic per-tool param lookup; config files
+  reject both a top-level `def function(){}` and a multi-statement closure body
+  (`def x = ...` then a line using `x`), so the resolver is one single-expression
+  Closure. This surfaced a real naming inconsistency — `pileup`'s outdir param
+  had been `bbmap_outdir` (file-name-based) while every other process used
+  `<processname>_outdir` — renamed to `pileup_outdir` (in
+  `s_i_mg_genomadviralfilter.nf`) with the user's confirmation. Verified the
+  whole pipeline still compiles *and runs* correctly end-to-end after the
+  change (missing-`--project_id` and `--help` paths both still produce correct
+  output).
+- The user then asked to apply the same system to the ~90 other files in
+  `nextflow_modules` this pipeline doesn't use. Flagged first that
+  `nextflow_modules` has no pipeline/config of its own, so this only avoids a
+  silent-no-publish regression for future consumers if they *all* adopt the
+  same `withLabel:` convention — the user confirmed `viral_inference_benchmark`
+  is deliberately the reference architecture every future pipeline in the lab
+  will replicate (the whole reason for developing the decisions/structure here
+  first). That sweep (70 files, 130 processes total) is logged in
+  `nextflow_modules/NOTEBOOK.md`, not repeated here. Net effect for this repo:
+  `conf/base.config`'s resolver is now proven correct and reusable as-is by any
+  future pipeline built the same way — no changes needed here for those other
+  ~124 newly-labeled processes until a future pipeline actually consumes them.
+- Separately, mid-session: found and resolved a real `git stash pop` conflict on
+  `nextflow_pipeline/README.md` — someone (not this session) ran `git pull`
+  after stashing this session's uncommitted work, pulling in 2 new commits that
+  restructured this same README and deleted several sections this session had
+  independently edited too. Confirmed via `git status`/reflog this was a
+  stash-pop conflict (`Updated upstream`/`Stashed changes` markers, not a merge
+  conflict), isolated to `README.md` — every other file, including `NOTEBOOK.md`
+  itself, auto-merged cleanly. Resolved by merging both sides deliberately
+  rather than picking one: kept upstream's restructuring (Config layout folded
+  into "Which config do I edit?"), dropped the now-duplicate old Config
+  layout/Why-site.config sections, kept this session's unique Modules
+  explanation and `publishDir` documentation, and preserved one unique detail
+  (why `i_mg_viralinference.config` includes `site.config` twice) by folding it
+  into the surviving structure. No stash entries left behind afterward.
+- Also noticed mid-session, unrelated to this session's own work: another
+  concurrent session implemented `nextflow_modules/modules/filter_viral_genomad.nf`
+  (previously an empty stub) for a real geNomad post-processing SLURM job —
+  logged in that repo's own notebook, not here; mentioning only because it
+  landed in a file this session's own sweep had also touched (just the
+  `publish_*` labels), and the two changes composed cleanly with no conflict.

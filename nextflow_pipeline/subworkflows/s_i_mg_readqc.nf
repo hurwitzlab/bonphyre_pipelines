@@ -1,9 +1,10 @@
 #!/usr/bin/env nextflow
 nextflow.enable.dsl=2
 
-include { bbduk } from '../../../nextflow_modules/modules/bbduk.nf'
+include { bbduk } from '../../../nextflow_modules/modules/bbmap.nf'
 include { trimmomatic } from '../../../nextflow_modules/modules/trimmomatic.nf'
 include { seqkit_stats } from '../modules/local/qc_metrics.nf'
+include { getReadqcManifest } from '../manifests/manifest_s_i_mg_readqc.nf'
 
 workflow s_i_mg_readqc {
     take:
@@ -11,13 +12,20 @@ workflow s_i_mg_readqc {
         adapters_ch    // path to adapters file, collected
 
     main:
+        // Point bbduk's and trimmomatic's publishDir (resolved centrally via
+        // conf/base.config's publish_final/publish_intermediate withLabel:
+        // blocks -- see that file) at this subworkflow's manifest-declared,
+        // per-sample layout ("${params.outdir}/<sampleid>/fastq/...") instead
+        // of a flat, tool-named directory.
+        def readqc_manifest = getReadqcManifest()
+        params.bbduk_outdir       = { sid -> "${params.outdir}/${sid}/${new File(readqc_manifest.adapter_trimmed_r1).parent}" }
+        params.trimmomatic_outdir = { sid -> "${params.outdir}/${sid}/${new File(readqc_manifest.clean_r1).parent}" }
+
         // Trim adapters with bbduk
-        // NOTE: bbduk.nf does not exist yet in nextflow_modules (tracked separately),
-        // so this call and its `trimmed_reads` emit are unverified against a real module.
         bbduk(reads_ch, adapters_ch)
 
         // Quality trim and filter the bbduk trimmed reads with trimmomatic
-        trimmomatic(bbduk.out.trimmed_reads)
+        trimmomatic(bbduk.out.clean_reads)
 
         // QC metric: raw vs. post-trim read counts, to catch samples that lose
         // most of their reads during adapter/quality trimming.

@@ -11,27 +11,27 @@ nextflow.enable.dsl=2
 // subworkflow emits, so it belongs in the workflow-level manifest instead.
 def getGenomadViralFilterManifest() {
     [
-        // geNomad
-        // Only contigs_virus.fna is referenced directly in the subworkflow code
+        // Viral inference (currently geNomad)
+        // Only viral_contigs_fna is referenced directly in the subworkflow code
         // (s_i_mg_genomadviralfilter.nf); the summary dir also contains other
         // geNomad end-to-end files not named here since they're unverified.
-        genomad_summary_dir:      "viral_filter/genomad/contigs_summary",
-        genomad_virus_fna:        "viral_filter/genomad/contigs_summary/contigs_virus.fna",
+        viral_summary_dir:  "viral_filter/contigs_summary",
+        viral_contigs_fna:  "viral_filter/contigs_summary/contigs_virus.fna",
 
-        // CheckV
-        // quality_summary.tsv is referenced directly in the subworkflow code.
-        // The other filenames are CheckV's standard end_to_end outputs (see the
+        // Quality assessment (currently CheckV)
+        // quality_summary is referenced directly in the subworkflow code. The
+        // other filenames are CheckV's standard end_to_end outputs (see the
         // sibling checkv_end_to_end process in nextflow_modules/modules/checkv.nf),
         // not yet referenced by this subworkflow but expected to exist in the dir.
-        checkv_dir:                "viral_filter/checkv",
-        checkv_quality_summary:    "viral_filter/checkv/quality_summary.tsv",
-        checkv_completeness:       "viral_filter/checkv/completeness.tsv",
-        checkv_contamination:      "viral_filter/checkv/contamination.tsv",
-        checkv_complete_genomes:   "viral_filter/checkv/complete_genomes.tsv",
-        checkv_proviruses:         "viral_filter/checkv/proviruses.fna",
-        checkv_viruses:            "viral_filter/checkv/viruses.fna",
+        quality_dir:          "viral_filter/quality",
+        quality_summary:      "viral_filter/quality/quality_summary.tsv",
+        completeness:         "viral_filter/quality/completeness.tsv",
+        contamination:        "viral_filter/quality/contamination.tsv",
+        complete_genomes:     "viral_filter/quality/complete_genomes.tsv",
+        proviruses:           "viral_filter/quality/proviruses.fna",
+        viruses:              "viral_filter/quality/viruses.fna",
 
-        // coverage (bbwrap + pileup)
-        coverage:                  "viral_filter/coverage/pileup_coverage.txt",
+        // Coverage (currently bbwrap + pileup)
+        coverage:            "viral_filter/coverage.txt",
     ]
 }

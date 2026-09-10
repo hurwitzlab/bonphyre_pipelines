@@ -6,6 +6,7 @@ include { checkv } from '../../../nextflow_modules/modules/checkv.nf'
 include { bbwrap } from '../../../nextflow_modules/modules/bbmap.nf' //coverage
 include { pileup } from '../../../nextflow_modules/modules/bbmap.nf' //coverage
 include { summarize_viral_filter } from '../modules/local/qc_metrics.nf'
+include { getGenomadViralFilterManifest } from '../manifests/manifest_s_i_mg_genomadviralfilter.nf'
 
 workflow s_i_mg_genomadviralfilter {
     take:
@@ -15,6 +16,15 @@ workflow s_i_mg_genomadviralfilter {
         reads_ch            // clean reads, tuple (sampleid, r1, r2)
 
     main:
+        // Point genomad/checkv/pileup's publishDir (resolved centrally via
+        // conf/base.config's publish_final/publish_intermediate withLabel:
+        // blocks -- see that file) at this subworkflow's manifest-declared,
+        // per-sample layout instead of a flat, tool-named directory.
+        def viral_filter_manifest = getGenomadViralFilterManifest()
+        params.genomad_outdir = { sid -> "${params.outdir}/${sid}/${new File(viral_filter_manifest.viral_summary_dir).parent}" }
+        params.checkv_outdir  = { sid -> "${params.outdir}/${sid}/${new File(viral_filter_manifest.quality_dir).parent}" }
+        params.pileup_outdir  = { sid -> "${params.outdir}/${sid}/${new File(viral_filter_manifest.coverage).parent}" }
+
         // Run genomad viral inference
         genomad(assembled_contigs, genomad_db_ch)
 
@@ -22,7 +32,7 @@ workflow s_i_mg_genomadviralfilter {
         // The summary dir contains multiple files — we only pass the virus sequences forward.
         virus_ch = genomad.out.inferences
             .map { sampleid, summary_dir ->
-                tuple(sampleid, file("${summary_dir}/${sampleid}/contigs_virus.fna"))
+                tuple(sampleid, file("${summary_dir}/contigs_virus.fna"))
             }
 
         // Estimate viral inference quality with CheckV

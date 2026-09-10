@@ -5,11 +5,45 @@
 nextflow.enable.dsl=2
 
 
-//2. If `true` this prevents a warning of undefined parameter 
+//2. If `true` this prevents a warning of undefined parameter
 params.help = false
 
-//4. Help menu: Function which prints help message text
-log.info """\
+//4. 1 Help if --help is specified.
+def helpMessage() {
+    log.info """
+       Usage:
+           nextflow run main.nf --reads '/path/to/reads/*/R{1,2}.fastq.gz'
+
+       Required arguments:
+           --reads     Path to paired-end reads
+
+       Optional arguments:
+           --outdir    Output directory (default: ./results)
+       """.stripIndent()
+}
+
+// NOTE: the banner (log.info), the --help check, and the --project_id check
+// all used to sit here, at the top level of the script. Nextflow's strict
+// syntax parser (this installed version: 26.04.6) doesn't allow that --
+// "Statements cannot be mixed with script declarations" -- only declarations
+// (include, def, process, workflow) are allowed outside a block. They now
+// run as the first statements inside workflow {} below instead.
+
+// Import processes from module files
+include { s_i_mg_readqc } from '../../subworkflows/s_i_mg_readqc.nf'
+include { megahit } from '../../../../nextflow_modules/modules/megahit.nf'
+include { s_i_mg_genomadviralfilter } from '../../subworkflows/s_i_mg_genomadviralfilter.nf'
+
+// megahit is called directly here (not wrapped in a subworkflow), so its
+// publishDir is pointed at the manifest here too -- see workflow_own_paths
+// in manifest_i_mg_viralinference.nf for why `contigs` lives at the
+// workflow level rather than in a subworkflow manifest.
+include { getManifest } from '../../manifests/manifest_i_mg_viralinference.nf'
+
+workflow {
+
+    //4. Help menu: print banner + parameters
+    log.info """\
 
         I L L U M I N A  M G  V I R A L  I N F E R E N C E - N F   P I P E L I N E
 ================================================================================================
@@ -18,41 +52,26 @@ List of parameters:
 
 version : ${params.workflow_version}
 
-publish @ ${pub}
-    
+publish @ ${params.outdir}
+
 """
-.stripIndent()
+    .stripIndent()
 
+    // Show help message if the user specifies the --help flag at runtime
+    if ( params.help ){
+        // Invoke the function above which prints the help message
+        helpMessage()
+        // Exit out and do not run anything else
+        exit 1
+    }
 
-//4. 1 Help if --help is specified.
-def helpMessage() {
-    log.info """
-       Usage:
-           nextflow run main.nf --reads '/path/to/reads/*/R{1,2}.fastq.gz'
-       
-       Required arguments:
-           --reads     Path to paired-end reads
-       
-       Optional arguments:
-           --outdir    Output directory (default: ./results)
-       """.stripIndent()
-}
-
-// Show help message if the user specifies the --help flag at runtime
-if ( params.help ){
-    // Invoke the function above which prints the help message
-    helpMessage()
-    // Exit out and do not run anything else
-    exit 1
-}
-
-
-// Import processes from module files
-include { s_i_mg_readqc } from '../../subworkflows/s_i_mg_readqc.nf'
-include { megahit } from '../../../../nextflow_modules/modules/megahit.nf'
-include { s_i_mg_genomadviralfilter } from '../../subworkflows/s_i_mg_genomadviralfilter.nf'
-
-workflow { 
+    // --project_id is required (see i_mg_viralinference.config, where params.outdir
+    // is built from it) -- a config file can't itself validate/exit, so this check
+    // lives here instead.
+    if ( !params.project_id ) {
+        log.error "Missing required parameter --project_id (every run is namespaced under a project on the data lake, e.g. --project_id my_project)"
+        exit 1
+    }
 
     // Load reference files/databases as single collected values so they can be
     // broadcast to every sample in reads_ch without being consumed once.
@@ -80,6 +99,16 @@ workflow {
 
     // trimmomatic.clean_reads is already (sampleid, r1, r2) -- no unpaired reads to drop.
     paired_ch = s_i_mg_readqc.out.reads
+
+    // megahit.nf's own output ("assembly/contigs.fa") is already kept in sync
+    // with manifest.contigs above -- the module has nothing left to
+    // subdivide, so publishDir (resolved centrally via conf/base.config's
+    // publish_final withLabel: block -- see that file) just needs the
+    // per-sample root.
+    def pipeline_manifest = getManifest()
+    assert pipeline_manifest.contigs == 'assembly/contigs.fa' : \
+        "manifest.contigs changed (${pipeline_manifest.contigs}) but megahit.nf's own output path wasn't updated to match"
+    params.megahit_outdir = { sid -> "${params.outdir}/${sid}" }
 
     // Assemble paired reads into contigs with MEGAHIT.
     megahit(paired_ch)
