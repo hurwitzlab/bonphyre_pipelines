@@ -22,6 +22,20 @@ this location, every include fails at parse time.
 
 ## Which config do I edit?
 
+### Config layout
+
+```
+nextflow_pipeline/
+  conf/
+    site.config                        # edit this, once per machine/cluster
+    base.config                        # default per-process resources, by label
+  nextflow.config                      # repo-wide: profiles, includeConfig site.config + base.config
+  workflows/
+    <name>/
+      <name>.config                    # per-pipeline: I/O paths, tool params, container refs
+      <name>.nf
+```
+
 There are four config files in this repo. As someone *running* a pipeline
 (not developing one), you'll only ever touch the first one:
 
@@ -73,106 +87,4 @@ subworkflow, or module file just to run it somewhere new — if you find
 yourself doing that, something is missing from `conf/site.config` or
 `nextflow.config` instead.
 
-## Modules
 
-Tool modules (`genomad.nf`, `checkv.nf`, `bbmap.nf`, ...) live in the separate
-[`nextflow_modules`](https://github.com/hurwitzlab/nextflow_modules) repo, not
-in this one — the whole lab shares the same module files across every
-pipeline. This repo only keeps its own `subworkflows/` (pipeline-specific
-orchestration) and each workflow's own `.config`/`.nf`.
-
-To add or change a tool module, work in `nextflow_modules`, following the
-conventions in its `modules/CLAUDE.md`, and bump the relative-path reference
-here only if the module's filename changes.
-
-## Config layout
-
-```
-nextflow_pipeline/
-  conf/
-    site.config                        # edit this, once per machine/cluster
-    base.config                        # default per-process resources, by label
-  nextflow.config                      # repo-wide: profiles, includeConfig site.config + base.config
-  workflows/
-    <name>/
-      <name>.config                    # per-pipeline: I/O paths, tool params, container refs
-      <name>.nf
-```
-
-Each `<name>.config` starts with `includeConfig '../../nextflow.config'`,
-which pulls in `conf/site.config` — so `params.databases_dir` and
-`params.singularity_images_dir` are available to every pipeline without
-being redefined per pipeline.
-
-## Why `conf/site.config`?
-
-The name follows a "site config" convention: it holds only the settings tied
-to *where the pipeline is installed* (this machine, this cluster, this lab's
-storage layout) — not settings tied to a particular pipeline, and not
-settings tied to a particular run.
-
-That distinction is the whole point of the layering:
-
-- **Site** (`conf/site.config`) — same for every pipeline, changes only when
-  you move to different infrastructure. Edited once.
-- **Pipeline** (`workflows/<name>/<name>.config`) — same for every run of
-  that pipeline, changes only when you add/change a tool. Edited by whoever
-  maintains that pipeline, rarely by whoever just runs it.
-- **Run** (`--flags` at the command line) — different every time, e.g.
-  `--reads`, `--outdir`. Never edited as a file at all.
-
-Naming it after what it configures (the site) rather than something generic
-like `local.config` or `env.config` makes it unambiguous which of the three
-files a new user is supposed to touch.
-
-## To Do
-
-### Decide: wire `manifests/` into `publishDir`, or keep it declarative?
-
-`manifests/` (see `manifest_i_mg_viralinference.nf` and its per-subworkflow
-manifests) currently just *declares* a target per-sample output layout
-(`<sampleid>/fastq/clean_r1.fastq`, etc.) as plain Groovy maps — nothing
-reads them. Every process's actual output location is still set by its own
-`publishDir`, using the flat, tool-named `params.*_outdir` values in each
-pipeline's `.config` (`trimmomatic_outdir`, `megahit_outdir`, ...), with the
-sample ID baked into the filename rather than a per-sample directory.
-
-Open question: leave it declarative (documentation of intent only), or
-rewire `publishDir` to actually build its path from the manifest.
-
-**Keep today's flat, tool-named `publishDir` layout (status quo)**
-- 👍 No migration cost or breakage risk — nothing currently running or
-  documented (including this README's own config table) depends on paths
-  changing.
-- 👍 Simple mental model: one output dir per tool, matching the convention
-  every module in the shared, lab-wide `nextflow_modules` repo already
-  follows.
-- 👍 No cross-pipeline coordination needed — each module independently owns
-  its `publishDir`.
-- 👎 Outputs from different samples interleave in the same directory
-  (filenames, not folders, carry the sample ID) — doesn't scale cleanly as
-  sample count grows, no single "everything for sample X" folder to hand off
-  or archive.
-- 👎 Path knowledge is scattered — finding sample X's CheckV output means
-  knowing the config value *and* the filename convention, not reading one
-  file.
-
-**Rewire `publishDir` to consume the manifest (per-sample layout)**
-- 👍 One place decides every output path — the payoff the crash-course
-  convention is built around: predictable, queryable structure, and a
-  foundation for emitting a `manifest.json` per sample later.
-- 👍 Easier to reason about "everything for sample X" as one directory tree
-  (archiving, handoff, QC review).
-- 👎 Real engineering work, and not contained to this repo: `publishDir` in
-  shared `nextflow_modules` modules would need to become dynamic per sample
-  (e.g. `publishDir { "${params.outdir}/${sampleid}/fastq" }`) — since those
-  modules are shared lab-wide, this has blast radius beyond just this
-  pipeline and needs care not to break other pipelines relying on their
-  current `publishDir` behavior.
-- 👎 Existing per-tool `*_outdir` params in each `.config` become redundant
-  or need redesigning — a breaking config change for anyone already running
-  a pipeline here.
-- 👎 No urgency signal yet: nothing reads the manifest today, and the
-  crash-course itself defers this same wiring "until you're writing
-  pipelines of your own, past the point where 5-6 processes fit comfortably
-  in your head."
