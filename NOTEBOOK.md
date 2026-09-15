@@ -334,3 +334,77 @@ Entry format:
   logged in that repo's own notebook, not here; mentioning only because it
   landed in a file this session's own sweep had also touched (just the
   `publish_*` labels), and the two changes composed cleanly with no conflict.
+
+## 2026-09-11
+- Wired `filter_viral_contigs`/`extract_fasta_viral_selection` (from
+  `nextflow_modules/modules/filter_viral_genomad.nf`, implemented in the
+  2026-09-10 entry above but never called from any subworkflow) into
+  `s_i_mg_genomadviralfilter.nf`'s `main:` block: filter takes
+  `checkv_tsv_ch` + `pileup.out.pileuped_files` + `genomad.out.inferences`
+  joined by `sampleid`; extract takes `filter_viral_contigs.out.viral_selection`
+  + `assembled_contigs` + `checkv.out.quality_assessment` (the whole CheckV
+  output dir, not just the tsv — `proviruses.fna` lives inside it). Added
+  `emit:` entries `viral_selection`, `viral_fasta`, `provirus_fasta`, and the
+  matching `params.filter_viral_contigs_outdir`/
+  `params.extract_fasta_viral_selection_outdir` closures (same
+  manifest-derived-Closure pattern as the existing `genomad_outdir` etc.) so
+  their `publish_intermediate`/`publish_final` labels actually resolve.
+  Extended `manifests/manifest_s_i_mg_genomadviralfilter.nf` with the new
+  output paths (`viral_selection`, `provirus_fasta`, `provirus_mapping`,
+  `virus_fasta`, `virus_mapping`), all under the existing `viral_filter/` root.
+- The user had independently started the same wiring in an unsaved editor
+  buffer and pasted it in for comparison; it had two real bugs, caught before
+  either version was kept: (1) it fed `checkv.out.quality_assessment` (a
+  directory) straight into `filter_viral_contigs` as `quality_summary`, but
+  `genomad_filterviral.r` calls `read_tsv()` on that argument directly, so it
+  needs the extracted `quality_summary.tsv` file, not the directory; (2) the
+  extract step's input channel was missing the CheckV directory entirely
+  (only `viral_selection` + `assembly`, 3-tuple against the process's 4-input
+  signature) — `genomad_getselectionviral.py` reads `proviruses.fna` from it
+  for the provirus half of the extraction. Rebuilt the subworkflow from the
+  user's draft (kept their numbered-step/`// Channel prep:` comment style)
+  with both fixed, rather than keeping either version as-is.
+- Verified with `nextflow run subworkflows/s_i_mg_genomadviralfilter.nf`:
+  clean parse both before and after the rebuild, only the expected
+  undefined-`container__*`-param warnings, no compile errors. Left-over
+  `work/`, `.nextflow*`, and a stray `null/pipeline_info/` (from the undefined
+  `params.outdir` in a standalone run) deleted after each check.
+- Mapping-csv outputs from `extract_fasta_viral_selection`
+  (`provirus_mapping`/`virus_mapping`) are in the manifest but deliberately
+  not emitted from the subworkflow — only asked for the filter selection and
+  the two fasta outputs.
+- Extended `summarize_viral_filter` (`bin/summarize_viral_filter.py` +
+  `modules/local/qc_metrics.nf`) to report on the filter/extract steps too,
+  rather than adding a second metrics process — matches
+  `subworkflows/CLAUDE.md`'s one-wide-row-per-subworkflow convention. New
+  columns: `n_passed_filter` (row count of the filter's
+  `<sampleid>_selection1.csv`), `n_viral_extracted`/`n_provirus_extracted`
+  (fasta record counts from extract's two outputs), `total_viral_genes`/
+  `total_host_genes` (summed from CheckV `quality_summary.tsv`'s
+  `viral_genes`/`host_genes` columns — the same columns
+  `genomad_filterviral.r` already filters on), and `filter_extract_match`
+  (boolean: `n_passed_filter == n_viral_extracted + n_provirus_extracted`, a
+  sanity check that the filter and extract steps agree). Chose **sum**, not
+  mean, for the two gene-count columns — a per-contig average was also a
+  reasonable reading of the ask; flagged to the user, not yet confirmed
+  either way.
+- Wired the three new inputs into `metrics_input_ch` (joined by `sampleid`)
+  and added a second `log.warn` (reusing `params.qc_min_viral_contigs`) for a
+  low `n_passed_filter`, separate from the existing pre-filter genomad/checkv
+  warning.
+- This grew the `metrics` row from 4 columns to 10, which meant also fixing
+  the hardcoded `seed:` header string in
+  `workflows/i_mg_viralinference/i_mg_viralinference.nf`'s `collectFile` for
+  `metrics_summary.tsv` — it would otherwise have silently kept the old
+  8-column header against 13-column data rows (this subworkflow's 10 plus
+  `s_i_mg_readqc`'s 4, minus the shared `sampleid`).
+- Ran a report-only module-check against `modules/local/qc_metrics.nf` after
+  editing `summarize_viral_filter`'s signature (using
+  `subworkflows/CLAUDE.md`'s local-module conventions, since this file has no
+  `CLAUDE.md` of its own) — no violations: braces balanced, no shell
+  comment/continuation issues, no new undefined params.
+- Verified with `nextflow run subworkflows/s_i_mg_genomadviralfilter.nf`
+  after each change: clean parse throughout, only the expected
+  undefined-`container__*`-param warnings.
+- Next: the sum-vs-mean choice for `total_viral_genes`/`total_host_genes`
+  needs the user's confirmation. Nothing from today is committed yet.

@@ -33,5 +33,21 @@ def getGenomadViralFilterManifest() {
 
         // Coverage (currently bbwrap + pileup)
         coverage:            "viral_filter/coverage.txt",
+
+        // Filtering geNomad/CheckV/coverage calls down to a viral selection
+        // (nextflow_modules/modules/filter_viral_genomad.nf: filter_viral_contigs).
+        // Actual filename is "<sampleid>_selection1.csv"; named generically here
+        // per this manifest's no-sampleid-in-filename convention.
+        viral_selection:     "viral_filter/selection1.csv",
+
+        // Extracting the selected viral/proviral sequences as FASTA
+        // (nextflow_modules/modules/filter_viral_genomad.nf: extract_fasta_viral_selection).
+        // The process creates its own "viral_selection" subdirectory; actual filenames
+        // are "<sampleid>_sel1_provirus.fa"/"<sampleid>_map_provirus.csv"/
+        // "<sampleid>_sel1_viral.fa"/"<sampleid>_map_virus.csv", named generically here.
+        provirus_fasta:      "viral_filter/viral_selection/provirus.fa",
+        provirus_mapping:    "viral_filter/viral_selection/map_provirus.csv",
+        virus_fasta:         "viral_filter/viral_selection/virus.fa",
+        virus_mapping:       "viral_filter/viral_selection/map_virus.csv",
     ]
 }

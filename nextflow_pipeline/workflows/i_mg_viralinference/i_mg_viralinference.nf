@@ -126,7 +126,7 @@ publish @ ${params.outdir}
         name: 'metrics_summary.tsv',
         storeDir: "${params.outdir}/pipeline_info",
         newLine: true,
-        seed: "sampleid\traw_reads\tclean_reads\tpct_reads_retained\tn_contigs\tn_viral\tmean_completeness\tmean_coverage"
+        seed: "sampleid\traw_reads\tclean_reads\tpct_reads_retained\tn_contigs\tn_viral\tmean_completeness\ttotal_viral_genes\ttotal_host_genes\tmean_coverage\tn_passed_filter\tn_viral_extracted\tn_provirus_extracted\tfilter_extract_match"
     )
 
 }

@@ -24,14 +24,14 @@ process seqkit_stats {
     '''
 }
 
-// Summarize genomad + checkv + coverage output into one row of viral-inference yield metrics
+// Summarize genomad + checkv + coverage + filter/extract output into one row of viral-inference yield metrics
 process summarize_viral_filter {
     label "process_single"
     container "${params.container__metrics}"
     tag "${sampleid}"
 
     input:
-        tuple val(sampleid), path(contigs), path(checkv_quality_summary), path(coverage)
+        tuple val(sampleid), path(contigs), path(checkv_quality_summary), path(coverage), path(viral_selection), path(viral_fasta), path(provirus_fasta)
 
     output:
         tuple val(sampleid), env('METRICS_ROW'), emit: summary
@@ -42,6 +42,9 @@ process summarize_viral_filter {
         --contigs !{contigs} \
         --checkv !{checkv_quality_summary} \
         --coverage !{coverage} \
+        --viral-selection !{viral_selection} \
+        --viral-fasta !{viral_fasta} \
+        --provirus-fasta !{provirus_fasta} \
         --outfile summary.tsv
 
     METRICS_ROW=$(cat summary.tsv)
