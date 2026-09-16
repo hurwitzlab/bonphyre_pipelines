@@ -1,5 +1,4 @@
-# viral_inference_benchmark
-Repository of the viral inference tool benchmark.
+# NF pipelines work by Mery
 
 The Nextflow pipelines themselves live under `nextflow_pipeline/` — see
 [`nextflow_pipeline/README.md`](nextflow_pipeline/README.md) for how to run
