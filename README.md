@@ -3,7 +3,7 @@
 The Nextflow pipelines themselves live under `nextflow_pipeline/` — see
 [`nextflow_pipeline/README.md`](nextflow_pipeline/README.md) for how to run
 one, how the config layers work, and how tool modules are shared via the
-sibling [`nextflow_modules`](https://github.com/hurwitzlab/nextflow_modules)
+sibling [`nextflow_process_library`](https://github.com/hurwitzlab/nextflow_process_library)
 repo.
 
 ## Contributing
@@ -14,7 +14,7 @@ subworkflow, module, or config here:
 
 1. Follow `nextflow_pipeline/subworkflows/CLAUDE.md` and `TEMPLATE.nf` for
    new subworkflows.
-2. Follow shared `nextflow_modules`' own
+2. Follow shared `nextflow_process_library`'s own
    `modules/CLAUDE.md` for tool modules there, and keep anything specific to
    this benchmark (QC/metrics logic, thresholds) in this repo's own
    `nextflow_pipeline/modules/local/` — never in the shared module repo.

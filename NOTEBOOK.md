@@ -408,3 +408,38 @@ Entry format:
   undefined-`container__*`-param warnings.
 - Next: the sum-vs-mean choice for `total_viral_genes`/`total_host_genes`
   needs the user's confirmation. Nothing from today is committed yet.
+
+## 2026-10-22
+- Shared module repo renamed `nextflow_modules` → `nextflow_process_library`
+  (github.com/hurwitzlab/nextflow_process_library), and it now has one directory
+  per tool (`modules/<tool>/<tool>.nf` instead of `modules/<tool>.nf`). Updated
+  every include in `bonphyre_pipelines/` (subworkflows, `TEMPLATE.nf`,
+  `i_mg_viralinference.nf`, including the two `//TODO: change to new repo
+  name` lines), plus `build.sh`, both READMEs, `subworkflows/CLAUDE.md` and
+  comments. Checked every include path resolves to a real file. Past
+  notebook entries left as-is.
+  - Note: the code now lives in `bonphyre_pipelines/` (untracked), while git
+    still tracks the old `nextflow_pipeline/` files (they show as deleted).
+    That rename predates today and still needs committing.
+- Still broken, not from the rename: `i_mg_viralinference.nf` includes
+  `megahit` and `mmseqs2`, but the library's files define
+  `megahit_paired_end`/`megahit_single_end` and
+  `mmseqs_cluster`/`cluster_proteins`. Also `s_i_mg_bwamapping.nf:15` has an
+  unfinished `sam_to_bam(bwa_align.out.)`, which is what the build's final
+  test run currently fails on.
+- `build.sh` now copies this script's directory into the build as a fixed
+  `pipeline/` folder instead of `bonphyre_pipelines/`. Include paths still
+  come out right because `pipeline/` sits at the same depth. Test build into a
+  scratch dir gave `<name>/pipeline/...` + `<name>/nextflow_process_library/...`
+  with every include resolving.
+- `dev/viral_inference_pipeline/` edited in place rather than rebuilt (it has
+  local edits the source doesn't: commented-out bwamapping/mmseqs2 includes,
+  `seqkit_stats` aliases): `bonphyre_pipelines/` → `pipeline/`,
+  `nextflow_modules/` → `nextflow_process_library/` with modules moved into
+  per-tool dirs (the copy's own module files, not refreshed from the library).
+  `nextflow run` on it compiles and stops at the expected missing
+  `--project_id`. `dev/build_manifest.txt`/`build_validation.log` still show
+  the original build's paths.
+- Next: commit the rename + today's changes; fix the megahit/mmseqs2 include
+  names and finish `s_i_mg_bwamapping.nf`. New `metapop` module in the library
+  (see its notebook) is ready to wire in for vOTU microdiversity.
