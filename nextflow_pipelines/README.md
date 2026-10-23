@@ -1,4 +1,4 @@
-# nextflow_pipeline
+# nextflow_pipelines
 
 Nextflow pipelines for viral inference benchmarking. Each pipeline lives under
 `workflows/<name>/` and is built from pipeline-specific `subworkflows/` and
@@ -25,7 +25,7 @@ this location, every include fails at parse time.
 ### Config layout
 
 ```
-nextflow_pipeline/
+nextflow_pipelines/
   conf/
     site.config                        # edit this, once per machine/cluster
     base.config                        # default per-process resources, by label

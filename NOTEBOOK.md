@@ -443,3 +443,32 @@ Entry format:
 - Next: commit the rename + today's changes; fix the megahit/mmseqs2 include
   names and finish `s_i_mg_bwamapping.nf`. New `metapop` module in the library
   (see its notebook) is ready to wire in for vOTU microdiversity.
+
+## 2026-10-23
+- Renamed `bonphyre_pipelines/` → `nextflow_pipelines/` with `git mv`, so all
+  26 tracked files show as renames, not delete + add. Staged, not committed.
+- No `include`/`includeConfig` uses the folder name (they're all relative
+  `../`), so no code changes were needed. Checked that every include in
+  `nextflow_pipelines/` resolves: all OK except two that were already missing
+  (`TEMPLATE.nf`'s `TOOLNAME` placeholder, and
+  `manifest_i_mg_viralinference.nf` → `manifest_s_i_mg_bwamapping.nf`, which
+  isn't written yet).
+- Several docs still said `nextflow_pipeline/` (singular, the name before
+  `bonphyre_pipelines`), and the root README's link to
+  `nextflow_pipeline/README.md` was broken. Updated these to
+  `nextflow_pipelines/`: root `README.md`, `nextflow_pipelines/README.md`,
+  `subworkflows/CLAUDE.md`, the `build.sh` comments and error message, and the
+  `/manifest` skill (`.claude/skills/manifest/SKILL.md`), whose paths and
+  `nextflow run` command are real instructions. Past notebook entries and
+  `dev/build_manifest.txt` left as-is.
+- Test build from the renamed folder (`./build.sh i_mg_viralinference
+  <scratch>`): found and copied all 24 files. The smoke test fails only on the
+  known `s_i_mg_bwamapping.nf:15` unfinished `sam_to_bam(bwa_align.out.)`, the
+  same as before the rename.
+- Also wrote setup guides for outside users (full guide + quick start, `.md`
+  and `.docx`, currently on the Desktop, not in the repo). They cover cloning
+  both repos as siblings, `build.sh`, the three config files, and the run
+  command. The repo URL is still a placeholder until we decide whether to
+  share it.
+- Next: commit the rename; finish `s_i_mg_bwamapping.nf`; decide whether the
+  quick start becomes `nextflow_pipelines/README.md`.

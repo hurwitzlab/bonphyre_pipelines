@@ -9,7 +9,7 @@
 # copies just that closure into a single self-contained directory:
 #
 #   <output_dir>/<pipeline_name>/
-#       pipeline/...    (this script's directory, e.g. bonphyre_pipelines/,
+#       pipeline/...    (this script's directory, e.g. nextflow_pipelines/,
 #                        renamed to a fixed 'pipeline/')
 #       nextflow_process_library/modules/<tool>/<tool>.nf
 #
@@ -83,12 +83,12 @@ fi
 
 # Resolve repo layout relative to this script's own location, not the
 # caller's cwd.
-script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"    # .../viral_inference_benchmark/nextflow_pipeline
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"    # .../viral_inference_benchmark/nextflow_pipelines
 repo_root="$(cd "${script_dir}/.." && pwd)"                   # .../viral_inference_benchmark
 
 if ! modules_root="$(cd "${repo_root}/../nextflow_process_library" 2>/dev/null && pwd)"; then
     echo "ERROR: nextflow_process_library not found as a sibling of ${repo_root}." >&2
-    echo "This repo's pipelines require nextflow_process_library cloned next to it -- see nextflow_pipeline/README.md 'Prerequisites'." >&2
+    echo "This repo's pipelines require nextflow_process_library cloned next to it -- see nextflow_pipelines/README.md 'Prerequisites'." >&2
     exit 1
 fi
 
@@ -192,7 +192,7 @@ for f in "${files[@]}"; do
         rel="${f#${modules_root}/}"
         dest="${pipeline_dir}/nextflow_process_library/${rel}"
     elif [[ "${f}" == "${script_dir}"/* ]]; then
-        # This script's own directory (e.g. bonphyre_pipelines/) is always
+        # This script's own directory (e.g. nextflow_pipelines/) is always
         # copied under a fixed 'pipeline/' name, whatever it's called here.
         rel="pipeline/${f#${script_dir}/}"
         dest="${pipeline_dir}/${rel}"

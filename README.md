@@ -1,7 +1,7 @@
 # NF pipelines work by Mery
 
-The Nextflow pipelines themselves live under `nextflow_pipeline/` — see
-[`nextflow_pipeline/README.md`](nextflow_pipeline/README.md) for how to run
+The Nextflow pipelines themselves live under `nextflow_pipelines/` — see
+[`nextflow_pipelines/README.md`](nextflow_pipelines/README.md) for how to run
 one, how the config layers work, and how tool modules are shared via the
 sibling [`nextflow_process_library`](https://github.com/hurwitzlab/nextflow_process_library)
 repo.
@@ -12,12 +12,12 @@ This repo gets edited concurrently by different lab members, and often by
 more than one Claude Code session at once. Before editing a
 subworkflow, module, or config here:
 
-1. Follow `nextflow_pipeline/subworkflows/CLAUDE.md` and `TEMPLATE.nf` for
+1. Follow `nextflow_pipelines/subworkflows/CLAUDE.md` and `TEMPLATE.nf` for
    new subworkflows.
 2. Follow shared `nextflow_process_library`'s own
    `modules/CLAUDE.md` for tool modules there, and keep anything specific to
    this benchmark (QC/metrics logic, thresholds) in this repo's own
-   `nextflow_pipeline/modules/local/` — never in the shared module repo.
+   `nextflow_pipelines/modules/local/` — never in the shared module repo.
 3. Verify a changed subworkflow standalone with `nextflow run <file>.nf` —
    it should fail only on a missing required parameter, not a compile error.
 4. Whatever you change here — a subworkflow, a config, `CLAUDE.md`, this

@@ -1,6 +1,6 @@
 ---
 name: manifest
-description: Generate or update a getManifest()-style output-path manifest (the nextflow_crash_course day2 convention) for a Nextflow subworkflow or workflow in nextflow_pipeline/. Use when the user asks to create/add/update a manifest for a subworkflow or workflow, or invokes /manifest.
+description: Generate or update a getManifest()-style output-path manifest (the nextflow_crash_course day2 convention) for a Nextflow subworkflow or workflow in nextflow_pipelines/. Use when the user asks to create/add/update a manifest for a subworkflow or workflow, or invokes /manifest.
 ---
 
 # Nextflow output manifest
@@ -9,15 +9,15 @@ Produce a `manifests/manifest_<name>.nf` file declaring every real output path a
 subworkflow or workflow produces, as a plain Groovy map (`getXManifest()`), per the
 convention in `nextflow_crash_course/day2_material/day2_pipeline2production.qmd`
 ("`getManifest()`: naming every output once") and demonstrated in
-`nextflow_pipeline/manifests/`.
+`nextflow_pipelines/manifests/`.
 
 ## Steps
 
-1. **Identify the target(s).** A subworkflow (`nextflow_pipeline/subworkflows/<name>.nf`)
-   or a workflow (`nextflow_pipeline/workflows/<name>/<name>.nf`). If the user didn't name
+1. **Identify the target(s).** A subworkflow (`nextflow_pipelines/subworkflows/<name>.nf`)
+   or a workflow (`nextflow_pipelines/workflows/<name>/<name>.nf`). If the user didn't name
    one and it's not obvious from context, ask. If asked for "all" or "every subworkflow",
-   enumerate `nextflow_pipeline/subworkflows/*.nf` (skip `TEMPLATE.nf`) and
-   `nextflow_pipeline/workflows/*/*.nf`, and skip any that already have a
+   enumerate `nextflow_pipelines/subworkflows/*.nf` (skip `TEMPLATE.nf`) and
+   `nextflow_pipelines/workflows/*/*.nf`, and skip any that already have a
    `manifests/manifest_<name>.nf`.
 
 2. **Trace every output to its real source.** Read the target's `take:`/`emit:` block
@@ -47,7 +47,7 @@ convention in `nextflow_crash_course/day2_material/day2_pipeline2production.qmd`
    for that rewire (it's a real behavior change, not implied by "add a manifest").
 
 6. **Location, naming, composition.**
-   - `nextflow_pipeline/manifests/manifest_<subworkflow-or-workflow-name>.nf`
+   - `nextflow_pipelines/manifests/manifest_<subworkflow-or-workflow-name>.nf`
    - Function name `get<PascalCaseName>Manifest()` (e.g. `getReadqcManifest()`); reserve
      bare `getManifest()` for the top-level workflow file.
    - A workflow-level manifest composes its subworkflows' manifests via `include {}` plus
@@ -62,7 +62,7 @@ convention in `nextflow_crash_course/day2_material/day2_pipeline2production.qmd`
 
 7. **Verify every new/edited file**, standalone, before considering it done:
    ```
-   nextflow run nextflow_pipeline/manifests/manifest_<name>.nf
+   nextflow run nextflow_pipelines/manifests/manifest_<name>.nf
    ```
    Expect `[SUCCESS] completed=0 failed=0 cached=0` with no compile error — there's no
    `workflow {}` entry point to actually run, so a clean parse is the whole check. Clean up

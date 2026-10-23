@@ -1,6 +1,6 @@
 # Subworkflow conventions (viral_inference_benchmark)
 
-Rules for writing/editing `.nf` files in `nextflow_pipeline/subworkflows/`, derived
+Rules for writing/editing `.nf` files in `nextflow_pipelines/subworkflows/`, derived
 from `s_i_mg_readqc.nf` and `s_i_mg_genomadviralfilter.nf`. Follow these for any new
 subworkflow. See `TEMPLATE.nf` for a copy-paste starting point, and `README.md` for
 the file-naming convention.
