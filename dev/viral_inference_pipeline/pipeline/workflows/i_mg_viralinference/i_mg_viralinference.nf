@@ -23,7 +23,7 @@ include { s_i_mg_readqc } from '../../subworkflows/s_i_mg_readqc.nf'
 // include { s_i_mg_bwamapping } from '../../subworkflows/s_i_mg_bwamapping.nf'               //TODO: make this subworkflow
 
 // Processes
-//include { megahit } from '../../../nextflow_process_library/modules/megahit/megahit.nf'
+include { megahit } from '../../../nextflow_process_library/modules/megahit/megahit.nf'
 // include { mmseqs2 } from '../../../nextflow_process_library/modules/mmseqs2/mmseqs2.nf'
 
 
@@ -74,7 +74,7 @@ publish @ ${params.outdir}
     s_i_mg_readqc(reads_ch, adapters_ch)
 
     // Assemble paired reads into contigs with MEGAHIT.
-    //megahit(s_i_mg_readqc.out.reads)
+    megahit(s_i_mg_readqc.out.reads)
 
     // Run genomad viral inference + filtering (includes its own coverage/QC-metric steps)
     //s_i_mg_genomadviralfilter(megahit.out.contigs, genomad_db_ch, checkv_db_ch, s_i_mg_readqc.out.reads)

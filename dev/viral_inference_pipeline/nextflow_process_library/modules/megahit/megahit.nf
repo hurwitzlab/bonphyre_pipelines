@@ -2,6 +2,7 @@
 
 // Assemble paired reads into contigs with megahit
  process megahit {
+    label "process_high"
     label "publish_final"
     container "${params.container__megahit}"
 
@@ -16,6 +17,9 @@
     megahit \
     -t !{task.cpus} \
     --presets !{params.megahit_preset} \
+    --k-min !{params.megahit_kmin} \
+    --k-max !{params.megahit_kmax} \
+    --k-step !{params.megahit_kstep} \
     -1 !{clean_r1} \
     -2 !{clean_r2} \
     -o megahit_out \
