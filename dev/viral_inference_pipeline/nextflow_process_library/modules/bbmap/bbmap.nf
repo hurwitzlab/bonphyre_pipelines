@@ -53,7 +53,7 @@
 
 // Trim adapters and low-quality bases from paired reads with bbduk
  process bbduk {
-    label "process_low"
+    label "process_single"
     label "publish_intermediate"
     container "${params.container__bbmap}"
 
@@ -62,7 +62,7 @@
         path(adapters_file)
 
     output:
-        tuple val(sampleid), path("!{sampleid}_adapter_trimmed_r1.fastq.gz"), path("!{sampleid}_adapter_trimmed_r2.fastq.gz"), emit: clean_reads
+        tuple val(sampleid), path("${sampleid}_adapter_trimmed_r1.fastq.gz"), path("${sampleid}_adapter_trimmed_r2.fastq.gz"), emit: clean_reads
 
     shell:
     '''
@@ -72,6 +72,8 @@
     out1=!{sampleid}_adapter_trimmed_r1.fastq.gz \
     out2=!{sampleid}_adapter_trimmed_r2.fastq.gz \
     ref=!{adapters_file} \
+    threads=!{task.cpus} \
+    -Xmx!{(task.memory.toMega() * 0.85) as int}m \
     ktrim=!{params.bbduk_ktrim} \
     k=!{params.bbduk_k} \
     mink=!{params.bbduk_mink} \

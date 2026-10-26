@@ -13,10 +13,12 @@ nextflow.enable.dsl=2
 def getReadqcManifest() {
     [
         // fastq
-        adapter_trimmed_r1:  "fastq/adapter_trimmed_r1.fastq",
-        adapter_trimmed_r2:  "fastq/adapter_trimmed_r2.fastq",
+        // Actual filenames are "<sampleid>_adapter_trimmed_r1.fastq.gz" etc.;
+        // named generically here per this manifest's no-sampleid-in-filename convention.
+        adapter_trimmed_r1:  "fastq/adapter_trimmed_r1.fastq.gz",
+        adapter_trimmed_r2:  "fastq/adapter_trimmed_r2.fastq.gz",
 
-        clean_r1:            "fastq/clean_r1.fastq",
-        clean_r2:            "fastq/clean_r2.fastq",
+        clean_r1:            "fastq/clean_r1.fastq.gz",
+        clean_r2:            "fastq/clean_r2.fastq.gz",
     ]
 }

@@ -3,7 +3,7 @@ nextflow.enable.dsl=2
 
 include { bbduk } from '../../../nextflow_process_library/modules/bbmap/bbmap.nf'
 include { trimmomatic } from '../../../nextflow_process_library/modules/trimmomatic/trimmomatic.nf'
-include { seqkit_stats } from '../modules/local/qc_metrics.nf'
+include { seqkit_stats as seqkit_stats_raw; seqkit_stats as seqkit_stats_clean } from '../modules/local/qc_metrics.nf'
 include { getReadqcManifest } from '../manifests/manifest_s_i_mg_readqc.nf'
 
 workflow s_i_mg_readqc {
@@ -29,8 +29,8 @@ workflow s_i_mg_readqc {
 
         // QC metric: raw vs. post-trim read counts, to catch samples that lose
         // most of their reads during adapter/quality trimming.
-        raw_counts_ch = seqkit_stats(reads_ch.map { sampleid, r1, r2 -> tuple(sampleid, r1) }, 'raw')
-        clean_counts_ch = seqkit_stats(
+        raw_counts_ch = seqkit_stats_raw(reads_ch.map { sampleid, r1, r2 -> tuple(sampleid, r1) }, 'raw')
+        clean_counts_ch = seqkit_stats_clean(
             trimmomatic.out.clean_reads.map { sampleid, r1, r2 -> tuple(sampleid, r1) },
             'clean'
         )
