@@ -10,7 +10,7 @@
         tuple val(sampleid), path(untrimmed_r1), path(untrimmed_r2)
 
     output:
-        tuple val(sampleid), path("!{sampleid}_clean_r1.fastq.gz"), path("!{sampleid}_clean_r2.fastq.gz"), emit: clean_reads
+        tuple val(sampleid), path("${sampleid}_clean_r1.fastq.gz"), path("${sampleid}_clean_r2.fastq.gz"), emit: clean_reads
 
     shell:
     '''

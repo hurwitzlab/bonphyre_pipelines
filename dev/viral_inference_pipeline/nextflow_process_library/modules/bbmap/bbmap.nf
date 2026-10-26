@@ -62,7 +62,7 @@
         path(adapters_file)
 
     output:
-        tuple val(sampleid), path("!{sampleid}_adapter_trimmed_r1.fastq.gz"), path("!{sampleid}_adapter_trimmed_r2.fastq.gz"), emit: clean_reads
+        tuple val(sampleid), path("${sampleid}_adapter_trimmed_r1.fastq.gz"), path("${sampleid}_adapter_trimmed_r2.fastq.gz"), emit: clean_reads
 
     shell:
     '''
