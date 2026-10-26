@@ -2,6 +2,7 @@
 
 // Assemble paired reads into contigs with megahit
  process megahit {
+    label "process_high"
     label "publish_final"
     container "${params.container__megahit}"
 
