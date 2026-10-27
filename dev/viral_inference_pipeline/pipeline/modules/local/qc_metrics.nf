@@ -1,8 +1,6 @@
 #!/usr/bin/env nextflow
 
-// Benchmark/QC metric processes local to this pipeline (not shared via
-// nextflow_process_library, since these encode this repo's own benchmark logic —
-// see subworkflows/CLAUDE.md).
+// Metric and parsing processes local to this pipeline
 
 // Count reads in a fastq file with seqkit, tagged by QC stage (e.g. "raw", "clean")
 process seqkit_stats {
@@ -50,3 +48,4 @@ process summarize_viral_filter {
     METRICS_ROW=$(cat summary.tsv)
     '''
 }
+

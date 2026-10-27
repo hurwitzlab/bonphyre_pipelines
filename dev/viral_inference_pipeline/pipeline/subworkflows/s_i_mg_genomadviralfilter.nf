@@ -7,7 +7,6 @@ include { bbwrap } from '../../nextflow_process_library/modules/bbmap/bbmap.nf' 
 include { pileup } from '../../nextflow_process_library/modules/bbmap/bbmap.nf' //coverage
 include { filter_viral_contigs } from '../../nextflow_process_library/modules/filter_viral_genomad/filter_viral_genomad.nf' //filter viral contigs based on coverage
 include { extract_fasta_viral_selection } from '../../nextflow_process_library/modules/filter_viral_genomad/filter_viral_genomad.nf' //extract fasta sequences from viral contigs that passed filter
-include { summarize_viral_filter } from '../modules/local/qc_metrics.nf'
 
 workflow s_i_mg_genomadviralfilter {
     take:
@@ -17,20 +16,7 @@ workflow s_i_mg_genomadviralfilter {
         reads_ch            // clean reads, tuple (sampleid, r1, r2)
 
     main:
-        // Point genomad/checkv/pileup's publishDir (resolved centrally via
-        // conf/base.config's publish_final/publish_intermediate withLabel:
-        // blocks -- see that file) at a per-sample layout
-        // ("${params.outdir}/<sampleid>/viral_filter/...") instead of a flat,
-        // tool-named directory. Each tool creates its own subdirectory/files
-        // under it (e.g. genomad -> contigs_summary/, checkv -> quality/,
-        // extract_fasta_viral_selection -> viral_selection/).
-        params.genomad_outdir                       = { sid -> "${params.outdir}/${sid}/viral_filter" }
-        params.checkv_outdir                        = { sid -> "${params.outdir}/${sid}/viral_filter" }
-        params.pileup_outdir                        = { sid -> "${params.outdir}/${sid}/viral_filter" }
-        params.filter_viral_contigs_outdir          = { sid -> "${params.outdir}/${sid}/viral_filter" }
-        params.extract_fasta_viral_selection_outdir = { sid -> "${params.outdir}/${sid}/viral_filter" }
-
-        // 1. Run genomad viral inference
+          // 1. Run genomad viral inference
         genomad(assembled_contigs, genomad_db_ch)
 
         // 2. Estimate viral inference quality with CheckV
@@ -74,32 +60,8 @@ workflow s_i_mg_genomadviralfilter {
         extract_fasta_viral_selection(extract_fasta_viral_selection_ch)
 
 
-        // METRICS
-        // QC/benchmark metric: contigs assembled vs. flagged viral, mean CheckV
-        // completeness, mean coverage, and the final post-filter/extraction viral
-        // yield — flags samples with poor viral yield.
-        metrics_input_ch = assembled_contigs
-            .join(checkv_tsv_ch)
-            .join(pileup.out.pileuped_files)
-            .join(filter_viral_contigs.out.viral_selection)
-            .join(extract_fasta_viral_selection.out.viral_fasta)
-            .join(extract_fasta_viral_selection.out.provirus_fasta)
-
-        metrics_ch = summarize_viral_filter(metrics_input_ch).summary
-            .map { sampleid, row ->
-                def (n_contigs, n_viral, mean_completeness, total_viral_genes, total_host_genes, mean_coverage, n_passed_filter, n_viral_extracted, n_provirus_extracted, filter_extract_match) = row.tokenize('\t')
-                if (n_viral.toInteger() < params.qc_min_viral_contigs) {
-                    log.warn "QC: sample ${sampleid} had only ${n_viral} contig(s) pass genomad/checkv out of ${n_contigs} assembled"
-                }
-                if (n_passed_filter.toInteger() < params.qc_min_viral_contigs) {
-                    log.warn "QC: sample ${sampleid} had only ${n_passed_filter} contig(s) pass the checkV+coverage filter out of ${n_viral} genomad/checkv calls"
-                }
-                tuple(sampleid, row)
-            }
-
     emit:
         checkv_output   = checkv.out.quality_assessment
-        metrics         = metrics_ch   // (sampleid, "n_contigs\tn_viral\tmean_completeness\ttotal_viral_genes\ttotal_host_genes\tmean_coverage\tn_passed_filter\tn_viral_extracted\tn_provirus_extracted\tfilter_extract_match")
         viral_selection = filter_viral_contigs.out.viral_selection          // (sampleid, selection1.csv) -- viruses/proviruses that passed the checkV+coverage filter
         viral_fasta     = extract_fasta_viral_selection.out.viral_fasta     // (sampleid, sel1_viral.fa) -- extracted viral sequences
         provirus_fasta  = extract_fasta_viral_selection.out.provirus_fasta  // (sampleid, sel1_provirus.fa) -- extracted proviral sequences

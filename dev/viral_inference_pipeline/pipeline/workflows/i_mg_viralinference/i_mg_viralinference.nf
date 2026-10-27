@@ -19,8 +19,8 @@ def helpMessage() {
 // Import processes from module files
 // Subworkflows
 include { s_i_mg_readqc } from '../../subworkflows/s_i_mg_readqc.nf'
-//include { s_i_mg_genomadviralfilter } from '../../subworkflows/s_i_mg_genomadviralfilter.nf'
-// include { s_i_mg_bwamapping } from '../../subworkflows/s_i_mg_bwamapping.nf'               //TODO: make this subworkflow
+include { s_i_mg_genomadviralfilter } from '../../subworkflows/s_i_mg_genomadviralfilter.nf'
+//include { s_i_mg_bwamapping } from '../../subworkflows/s_i_mg_bwamapping.nf'               //TODO: make this subworkflow
 
 // Processes
 include { megahit } from '../../../nextflow_process_library/modules/megahit/megahit.nf'
@@ -55,8 +55,8 @@ publish @ ${params.outdir}
     // -----------------------------------------------------------------------------------------------------------------------------
     // 2.1. Databases
     adapters_ch    = Channel.fromPath(params.illumina_adapters_file).collect()  //.collect() allows the channel to be broadcasted to every sample run
-    //genomad_db_ch  = Channel.fromPath(params.genomad_db).collect()
-    //checkv_db_ch   = Channel.fromPath(params.checkv_db).collect()
+    genomad_db_ch  = Channel.fromPath(params.genomad_db).collect()
+    checkv_db_ch   = Channel.fromPath(params.checkv_db).collect()
 
 
     // 2.2. Paired-end reads.
@@ -77,7 +77,7 @@ publish @ ${params.outdir}
     megahit(s_i_mg_readqc.out.reads)
 
     // Run genomad viral inference + filtering (includes its own coverage/QC-metric steps)
-    //s_i_mg_genomadviralfilter(megahit.out.contigs, genomad_db_ch, checkv_db_ch, s_i_mg_readqc.out.reads)
+    s_i_mg_genomadviralfilter(megahit.out.contigs, genomad_db_ch, checkv_db_ch, s_i_mg_readqc.out.reads)
 
     // Clustering
 

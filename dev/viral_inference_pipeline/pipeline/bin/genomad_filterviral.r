@@ -1,3 +1,4 @@
+#!/usr/bin/env Rscript
 # Script to filter viral outputs from genomad using checkv and coverage information
 # Author: Mery Touceda-Suarez from Alise Ponsero's work (https://github.com/aponsero/HPC_ViralDetection/blob/main/config_scripts/FilterViral.R)
 # Date: February 18th 2026
