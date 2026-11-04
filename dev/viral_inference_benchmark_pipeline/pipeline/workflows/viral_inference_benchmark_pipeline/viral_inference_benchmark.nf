@@ -4,11 +4,11 @@
 def helpMessage() {
     log.info """
        Usage:
-           nextflow run viral_inference_benchmark.nf --reads '/path/to/reads/*/R{1,2}.fastq.gz'
+           nextflow run viral_inference_benchmark.nf --contigs '/path/to/contigs/*/contigs.fa'
 
        Required arguments:
-           --reads     Path to paired-end reads
-           --projectid Name of project id
+           --contigs     Path to contigs
+           --project_id  Name of project id
 
        Optional arguments:
            --outdir    Output directory (default: ./results)
@@ -18,12 +18,15 @@ def helpMessage() {
 
 // Import processes from module files
 // Subworkflows
-include { s_i_mg_readqc } from '../../subworkflows/s_i_mg_readqc.nf'
-//include { s_i_mg_genomadviralfilter } from '../../subworkflows/s_i_mg_genomadviralfilter.nf'
-
 // Processes
-include { megahit } from '../../../nextflow_process_library/modules/megahit/megahit.nf'
-
+include { deepmicroclass2 } from '../../../nextflow_process_library/modules/deepmicroclass2/deepmicroclass2.nf'
+include { deepvirfinder } from '../../../nextflow_process_library/modules/deepvirfinder/deepvirfinder.nf'
+include { genomad } from '../../../nextflow_process_library/modules/genomad/genomad.nf'
+include { marvel } from '../../../nextflow_process_library/modules/marvel/marvel.nf'
+include { vibrant } from '../../../nextflow_process_library/modules/vibrant/vibrant.nf'
+include { viralm } from '../../../nextflow_process_library/modules/viralm/viralm.nf'
+include { virrep } from '../../../nextflow_process_library/modules/virrep/virrep.nf'
+include { virsorter2 } from '../../../nextflow_process_library/modules/virsorter2/virsorter2.nf'
 
 workflow {
     // -----------------------------------------------------------------------------------------------------------------------------
@@ -52,36 +55,51 @@ publish @ ${params.outdir}
     // 2. Channel creation
     // -----------------------------------------------------------------------------------------------------------------------------
     // 2.1. Databases
-    adapters_ch    = Channel.fromPath(params.illumina_adapters_file).collect()  //.collect() allows the channel to be broadcasted to every sample run
-    //genomad_db_ch  = Channel.fromPath(params.genomad_db).collect()
-    //checkv_db_ch   = Channel.fromPath(params.checkv_db).collect()
+    genomad_db_ch    = Channel.fromPath(params.genomad_db, checkIfExists: true).collect()
+    viralm_db_ch     = Channel.fromPath(params.viralm_db, checkIfExists: true).collect()
+    virsorter2_db_ch = Channel.fromPath(params.virsorter2_db, checkIfExists: true).collect()
 
+    // 2.2. Scripts
+    virrep_script_ch = Channel.fromPath(params.virrep_script, checkIfExists: true).collect()   // patched VirRep.py
 
-    // 2.2. Paired-end reads
-    reads_ch = Channel
-        .fromFilePairs(params.reads, flat: true, checkIfExists: true)
-        .view { sample_id, r1, r2 -> "Found sample: ${sample_id}" }  //for debugging
-	
+    // 2.3. Contigs: tuple (sampleid, contigs), sampleid = name of the contigs' parent directory
+    contigs_ch = Channel
+        .fromPath(params.contigs, checkIfExists: true)
+        .map { contigs -> tuple(contigs.parent.name, contigs) }
+
+    // 2.4. Reads (marvel only, it bins from reads): tuple (sampleid, r1, r2)
+    reads_ch = Channel.fromFilePairs(params.reads, flat: true, checkIfExists: true)
+
     // -----------------------------------------------------------------------------------------------------------------------------
     // 3. Pipeline
     // -----------------------------------------------------------------------------------------------------------------------------
 
     // -----------------------------------------
-    // 3.1. Assembly (for real datasets only)
+    // 3.1. Viral inference tools
     // -----------------------------------------
 
-    // Trim and filter reads
-    s_i_mg_readqc(reads_ch, adapters_ch)
+    // deepmicroclass2
+        deepmicroclass2(contigs_ch)
 
-    // Assemble paired reads into contigs with MEGAHIT.
-    megahit(s_i_mg_readqc.out.reads)
+    // deepvirfinder
+        deepvirfinder(contigs_ch)
 
+    // genomad
+        genomad(contigs_ch, genomad_db_ch)
 
+    // marvel
+        marvel(reads_ch)
 
+    // vibrant
+        vibrant(contigs_ch)
 
-    // -----------------------------------------
-    // 3.2. Viral inference tools
-    // -----------------------------------------
-    //
+    // viralm
+        viralm(contigs_ch, viralm_db_ch)
+
+    // virrep
+        virrep(contigs_ch, virrep_script_ch)
+
+    // virsorter2
+        virsorter2(contigs_ch, virsorter2_db_ch)
 }
 
