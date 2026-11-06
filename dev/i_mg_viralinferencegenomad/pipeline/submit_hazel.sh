@@ -16,8 +16,8 @@ module load nextflow/26.04.3 java/17 apptainer
 export NXF_APPTAINER_CACHEDIR="$APPTAINER_CACHEDIR"
 
 # --- Launch the pipeline ---
-nextflow run workflows/i_mg_viralinference/i_mg_viralinference.nf \
-    -c workflows/i_mg_viralinference/i_mg_viralinference.config \
+nextflow run workflows/i_mg_viralinferencegenomad/i_mg_viralinferencegenomad.nf \
+    -c workflows/i_mg_viralinferencegenomad/i_mg_viralinferencegenomad.config \
     -profile hazel \
     --project_id test \
     -resume
