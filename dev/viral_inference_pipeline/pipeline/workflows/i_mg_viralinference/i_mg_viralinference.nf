@@ -20,7 +20,7 @@ def helpMessage() {
 // Subworkflows
 include { s_i_mg_readqc } from '../../subworkflows/s_i_mg_readqc.nf'
 include { s_i_mg_genomadviralfilter } from '../../subworkflows/s_i_mg_genomadviralfilter.nf'
-//include { s_i_mg_bwamapping } from '../../subworkflows/s_i_mg_bwamapping.nf'               //TODO: make this subworkflow
+include { s_i_mg_abundancetable } from '../../subworkflows/s_i_mg_abundancetable.nf'
 
 // Processes
 include { megahit } from '../../../nextflow_process_library/modules/megahit/megahit.nf'
@@ -98,7 +98,9 @@ publish @ ${params.outdir}
         .map { _pooledid, rep_seqs -> rep_seqs.countFasta() }
         .subscribe { n -> log.info "Viral catalog: ${n} representative sequences after clustering" }
 
-    // Read mapping
+    // Abundance table: index the clustered catalog (mmseqs representative seqs), map each sample's
+    // clean reads to it with bwa mem, and build one table across all samples with coverm (metric = params.coverm_m).
+    s_i_mg_abundancetable(s_i_mg_readqc.out.reads, mmseqs_easy_cluster.out.representative_seqs)
 
 
     // -----------------------------------------------------------------------------------------------------------------------------
@@ -108,10 +110,12 @@ publish @ ${params.outdir}
     // and write it out as a single benchmark/QC summary table.
     all_metrics_ch = s_i_mg_readqc.out.metrics
     		   .join(s_i_mg_genomadviralfilter.out.metrics, remainder: true)
-    		   .map { sampleid, readqc_row, viral_row ->
-         	   	def readqc = readqc_row ?: (['NA'] * 3).join('\t')
-         	   	def viral  = viral_row  ?: (['NA'] * 10).join('\t')
-         	   	"${sampleid}\t${readqc}\t${viral}"
+    		   .join(s_i_mg_abundancetable.out.metrics, remainder: true)
+    		   .map { sampleid, readqc_row, viral_row, mapping_row ->
+         	   	def readqc  = readqc_row  ?: (['NA'] * 3).join('\t')
+         	   	def viral   = viral_row   ?: (['NA'] * 10).join('\t')
+         	   	def mapping = mapping_row ?: (['NA'] * 3).join('\t')
+         	   	"${sampleid}\t${readqc}\t${viral}\t${mapping}"
      		   }
 
      all_metrics_ch.collectFile(
@@ -119,7 +123,7 @@ publish @ ${params.outdir}
          storeDir: "${params.outdir}/pipeline_info",
          newLine: true,
          sort:     true,
-         seed: "sampleid\traw_reads\tclean_reads\tpct_reads_retained\tn_contigs\tn_viral\tmean_completeness\ttotal_viral_genes\ttotal_host_genes\tmean_coverage\tn_passed_filter\tn_viral_extracted\tn_provirus_extracted\tfilter_extract_match"
+         seed: "sampleid\traw_reads\tclean_reads\tpct_reads_retained\tn_contigs\tn_viral\tmean_completeness\ttotal_viral_genes\ttotal_host_genes\tmean_coverage\tn_passed_filter\tn_viral_extracted\tn_provirus_extracted\tfilter_extract_match\tmapping_input_reads\tmapped_reads\tpct_reads_mapped"
      )
 
 }

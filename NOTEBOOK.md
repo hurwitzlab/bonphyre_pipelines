@@ -472,3 +472,71 @@ Entry format:
   share it.
 - Next: commit the rename; finish `s_i_mg_bwamapping.nf`; decide whether the
   quick start becomes `nextflow_pipelines/README.md`.
+
+## 2026-11-06
+- (Work from 2026-10-26 to 2026-11-05, covering read QC, MEGAHIT, geNomad,
+  metrics and mmseqs2 clustering through PR #5, is in `git log`; no notebook
+  entries were written for it.)
+- On branch `add_mapping`, in `dev/viral_inference_pipeline/pipeline/`: finished the
+  mapping step and renamed it from `s_i_mg_bwamapping` to **`s_i_mg_abundancetable`**.
+  The new name says what the step produces (the table), not which tool it uses, so it
+  stays correct if bwa is swapped out. It's "abundance" rather than "count" because
+  `coverm_m` can be other metrics (trimmed_mean, tpm, ...). Kept the `s_` prefix.
+  The old stub in `nextflow_pipelines/subworkflows/` hasn't been updated.
+- The steps follow the old Slurm scripts:
+  1. `bwa_index` on the mmseqs representative seqs (`viral_catalog_rep_seq.fasta`), once.
+  2. `bwa_mem` for each sample's clean reads.
+  3. `sam_to_bam` (`-F 4`), then `sort_bam`, then `index_bam`.
+  4. `coverm` on all sorted BAMs together. BAMs are sorted by file name so sample
+     columns stay in the same order between runs.
+  - Output: `<outdir>/viral_catalog/coverm/viral_catalog.txt`.
+  - New coverm params, with defaults taken from the Slurm job: `coverm_sequence =
+    contig`, `coverm_m = count` (this is the `-m` mode), `coverm_minident = 0.95`,
+    `coverm_minlen = 45`. Kept the shared module's name `coverm_m` instead of a
+    new `covermmode`.
+- Added mapping QC metrics: new local process `mapping_stats` in
+  `modules/local/qc_metrics.nf` runs `samtools flagstat -O tsv` on the raw bwa SAM
+  (before unmapped reads are dropped). Three new columns at the end of
+  `pipeline_info/metrics_summary.tsv`:
+  - `mapping_input_reads`: number of primary reads that went into bwa mem (flagstat
+    "primary" row). R1 and R2 are counted **separately**, so it should be about
+    2× `clean_reads`, which counts R1 only (pairs). If it isn't about 2×, reads
+    were lost between QC and mapping.
+  - `mapped_reads`: of those, how many mapped to the clustered viral catalog
+    (flagstat "primary mapped" row). Primary only, so a read that hits several
+    vOTUs counts once and secondary/supplementary alignments don't inflate it.
+  - `pct_reads_mapped`: `mapped_reads / mapping_input_reads × 100`, rounded to 1
+    decimal. It's the share of the sample the viral catalog accounts for. A
+    `log.warn` is printed when it's below `params.qc_min_pct_reads_mapped`
+    (default 1, a placeholder until we see real data).
+  - Any of these is `NA` if a sample never reached the mapping step.
+- Checks: `nextflow lint` gives no errors; the subworkflow compiles standalone. Not
+  run on data yet.
+- Next: fill in the `container__bwa`/`container__samtools`/`container__coverm`
+  image paths. They're `TODO` for now, the samtools image must be ≥ 1.13 for the
+  flagstat "primary" rows, and mmseqs2 is also still `TODO`. Then test-run on
+  Hazel, set `qc_min_pct_reads_mapped` from real numbers, consider more coverm
+  resources than `process_medium` for many samples, and commit and open a PR
+  for `add_mapping`.
+- **Removed `cleanup = true`** from `dev/.../pipeline/nextflow.config`, deliberately.
+  `nextflow_pipelines/nextflow.config` still has it, so dev and the release copy
+  differ on purpose for now. Revisit before copying dev over.
+  - Why: with `cleanup = true`, Nextflow deletes `work/` after every successful run.
+    (1) `-resume` (used in `submit_hazel.sh`) then finds nothing cached and reruns
+    everything from read QC. (2) Outputs published with `publish_intermediate*`
+    labels are symlinks into `work/` (`publish_mode_intermediate = 'symlink'`), so
+    they break, e.g. the bwa index in `<outdir>/viral_catalog/bwa_index/`.
+  - Cost: `work/` keeps everything, including each sample's SAM (the biggest file
+    in the pipeline) and the unsorted BAM. `work/` has to be cleared by hand once a
+    run's results are checked: `nextflow clean -f` or `rm -r work/`. Clearing it
+    breaks the intermediate symlinks again, so anything worth keeping long-term
+    needs a `publish_final*` label (copy mode).
+  - Options to revisit: (a) set `publish_mode_intermediate = 'copy'` (more disk,
+    but intermediates survive cleanup); (b) put `cleanup = true` back once the
+    pipeline is stable and `-resume` matters less; (c) if `work/` gets too big,
+    pipe `bwa mem` straight into `samtools` in the bwa module so the SAM is never
+    written (but that's a shared-module change).
+- Where the BAMs end up: only `index_bam` has a publish label (`publish_final`,
+  copy), so the sorted BAM + `.bai` are copied to
+  `<outdir>/<sampleid>/index_bam/`. The folder is named after the process, not
+  "bam". The SAM, raw BAM and the sorted BAM from `sort_bam` stay in `work/` only.
