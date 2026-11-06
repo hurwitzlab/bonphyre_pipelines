@@ -24,6 +24,7 @@
     subfilter=!{params.bbmap_subfilter} \
     maxindel=!{params.bbmap_maxindel} \
     threads=!{task.cpus} \
+    -Xmx!{(task.memory.toMega() * 0.85) as int}m \
     nodisk
     '''
 }
@@ -45,7 +46,8 @@
     pileup.sh \
     in=!{aligned_sam} \
     out=coverage.txt \
-    threads=!{task.cpus}
+    threads=!{task.cpus} \
+    -Xmx!{(task.memory.toMega() * 0.85) as int}m
     '''
 
  }

@@ -20,7 +20,7 @@
 
     shell:
     '''
-    Rscript --no-save genomad_filterviral.r \
+    genomad_filterviral.r \
     !{quality_summary} \
     !{coverage_file} \
     !{sampleid}
@@ -46,7 +46,7 @@
     '''
     mkdir -p viral_selection
 
-    python genomad_getselectionviral.py \
+    genomad_getselectionviral.py \
     -f !{viral_selection} \
     -a !{assembly} \
     -c1 !{checkv_dir} \

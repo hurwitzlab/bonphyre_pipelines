@@ -19,12 +19,12 @@ def helpMessage() {
 // Import processes from module files
 // Subworkflows
 include { s_i_mg_readqc } from '../../subworkflows/s_i_mg_readqc.nf'
-//include { s_i_mg_genomadviralfilter } from '../../subworkflows/s_i_mg_genomadviralfilter.nf'
-// include { s_i_mg_bwamapping } from '../../subworkflows/s_i_mg_bwamapping.nf'               //TODO: make this subworkflow
+include { s_i_mg_genomadviralfilter } from '../../subworkflows/s_i_mg_genomadviralfilter.nf'
+//include { s_i_mg_bwamapping } from '../../subworkflows/s_i_mg_bwamapping.nf'               //TODO: make this subworkflow
 
 // Processes
 include { megahit } from '../../../nextflow_process_library/modules/megahit/megahit.nf'
-// include { mmseqs2 } from '../../../nextflow_process_library/modules/mmseqs2/mmseqs2.nf'
+include { mmseqs_easy_cluster } from '../../../nextflow_process_library/modules/mmseqs2/mmseqs2.nf'
 
 
 workflow {
@@ -55,8 +55,8 @@ publish @ ${params.outdir}
     // -----------------------------------------------------------------------------------------------------------------------------
     // 2.1. Databases
     adapters_ch    = Channel.fromPath(params.illumina_adapters_file).collect()  //.collect() allows the channel to be broadcasted to every sample run
-    //genomad_db_ch  = Channel.fromPath(params.genomad_db).collect()
-    //checkv_db_ch   = Channel.fromPath(params.checkv_db).collect()
+    genomad_db_ch  = Channel.fromPath(params.genomad_db).collect()
+    checkv_db_ch   = Channel.fromPath(params.checkv_db).collect()
 
 
     // 2.2. Paired-end reads.
@@ -80,33 +80,50 @@ publish @ ${params.outdir}
     megahit(s_i_mg_readqc.out.reads)
 
     // Run genomad viral inference + filtering (includes its own coverage/QC-metric steps)
-    //s_i_mg_genomadviralfilter(megahit.out.contigs, genomad_db_ch, checkv_db_ch, s_i_mg_readqc.out.reads)
+    s_i_mg_genomadviralfilter(megahit.out.contigs, genomad_db_ch, checkv_db_ch, s_i_mg_readqc.out.reads)
 
-    // Clustering
+    // Clustering: concatenate filtered viral + proviral seqs from all samples into one catalog, cluster with mmseqs2
+        // Channel prep: headers are already "<sampleid>_viral_N"/"<sampleid>_provirus_N", so seq IDs are unique across samples.
+        // collectFile waits for ALL samples; sorting by file name keeps the catalog order reproducible.
+        // viral_catalog_id is the pooledid: names the catalog file, the mmseqs output files, and the <outdir>/<pooledid>/ folder.
+    def viral_catalog_id = 'viral_catalog'
+    viral_catalog_ch = s_i_mg_genomadviralfilter.out.viral_fasta
+        .mix(s_i_mg_genomadviralfilter.out.provirus_fasta)
+        .map { sampleid, fasta -> fasta }
+        .collectFile(name: "${viral_catalog_id}.fna", storeDir: "${params.outdir}/${viral_catalog_id}", sort: { it.name })
+    mmseqs_easy_cluster(viral_catalog_ch.map { catalog -> tuple(viral_catalog_id, catalog) })
+
+        // Report catalog size before vs. after clustering (number of representative sequences = number of clusters)
+    viral_catalog_ch
+        .map { catalog -> catalog.countFasta() }
+        .subscribe { n -> log.info "Viral catalog: ${n} sequences before clustering" }
+    mmseqs_easy_cluster.out.representative_seqs
+        .map { _pooledid, rep_seqs -> rep_seqs.countFasta() }
+        .subscribe { n -> log.info "Viral catalog: ${n} representative sequences after clustering" }
 
     // Read mapping
 
 
-    // // -----------------------------------------------------------------------------------------------------------------------------
-    // // 4. Pipeline metric collection
-    // // -----------------------------------------------------------------------------------------------------------------------------
-    // // Combine every subworkflow's per-sample metrics into one wide row per sample
-    // // and write it out as a single benchmark/QC summary table.
-    // all_metrics_ch = s_i_mg_readqc.out.metrics
-    // .join(s_i_mg_genomadviralfilter.out.metrics, remainder: true)
-    // .map { sampleid, readqc_row, viral_row ->
-    //     def readqc = readqc_row ?: (['NA'] * 3).join('\t')
-    //     def viral  = viral_row  ?: (['NA'] * 10).join('\t')
-    //     "${sampleid}\t${readqc}\t${viral}"
-    // }
+    // -----------------------------------------------------------------------------------------------------------------------------
+    // 4. Pipeline metric collection
+    // -----------------------------------------------------------------------------------------------------------------------------
+    // Combine every subworkflow's per-sample metrics into one wide row per sample
+    // and write it out as a single benchmark/QC summary table.
+    all_metrics_ch = s_i_mg_readqc.out.metrics
+    		   .join(s_i_mg_genomadviralfilter.out.metrics, remainder: true)
+    		   .map { sampleid, readqc_row, viral_row ->
+         	   	def readqc = readqc_row ?: (['NA'] * 3).join('\t')
+         	   	def viral  = viral_row  ?: (['NA'] * 10).join('\t')
+         	   	"${sampleid}\t${readqc}\t${viral}"
+     		   }
 
-    // all_metrics_ch.collectFile(
-    //     name: 'metrics_summary.tsv',
-    //     storeDir: "${params.outdir}/pipeline_info",
-    //     newLine: true,
-    //     sort:     true,
-    //     seed: "sampleid\traw_reads\tclean_reads\tpct_reads_retained\tn_contigs\tn_viral\tmean_completeness\ttotal_viral_genes\ttotal_host_genes\tmean_coverage\tn_passed_filter\tn_viral_extracted\tn_provirus_extracted\tfilter_extract_match"
-    // )
+     all_metrics_ch.collectFile(
+         name: 'metrics_summary.tsv',
+         storeDir: "${params.outdir}/pipeline_info",
+         newLine: true,
+         sort:     true,
+         seed: "sampleid\traw_reads\tclean_reads\tpct_reads_retained\tn_contigs\tn_viral\tmean_completeness\ttotal_viral_genes\ttotal_host_genes\tmean_coverage\tn_passed_filter\tn_viral_extracted\tn_provirus_extracted\tfilter_extract_match"
+     )
 
 }
 

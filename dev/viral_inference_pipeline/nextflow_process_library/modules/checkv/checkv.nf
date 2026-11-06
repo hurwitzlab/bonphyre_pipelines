@@ -19,8 +19,8 @@
     checkv end_to_end \
     !{inferred_sequences} \
     quality \
-    --threads !{task.cpus} \
-    --db !{checkv_db}
+    -t !{task.cpus} \
+    -d !{checkv_db}
     '''
 }
 

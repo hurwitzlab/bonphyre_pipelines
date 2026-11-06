@@ -4,22 +4,24 @@
 //   bam_ch
 //     .map { sampleid, bam -> bam }
 //     .collect()
+//     .map { bams -> tuple('count_table', bams) }   // pooledid
 //     .set { all_bams }
 //   coverm(all_bams)
 
 // Estimating relative abundance of vOTUs with CoverM (merged across all BAMs)
 process coverm {
     label "process_medium"
+    label "publish_final_pooled"
     container "${params.container__coverm}"
-    // NOTE: no sampleid in scope -- this merges across all sample BAMs at
-    // once by design (see usage comment above).
-    publishDir "${params.coverm_outdir}", mode: 'copy'
+    // Merges all sample BAMs into ONE count table: pooledid names that pooled
+    // output (e.g. 'count_table'); it is both the output file name and what
+    // the publish_*_pooled labels pass to params.coverm_outdir.
 
     input:
-        path(bam_files)
+        tuple val(pooledid), path(bam_files)
 
     output:
-        path("votus_count_table.txt"), emit: count_table
+        tuple val(pooledid), path("${pooledid}.txt"), emit: count_table
 
     shell:
     '''
@@ -33,6 +35,6 @@ process coverm {
     -m !{params.coverm_m} \
     --min-read-percent-identity !{params.coverm_minident} \
     --min-read-aligned-length !{params.coverm_minlen} \
-    > votus_count_table.txt
+    > !{pooledid}.txt
     '''
 }

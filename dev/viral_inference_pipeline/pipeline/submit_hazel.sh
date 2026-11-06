@@ -2,7 +2,7 @@
 #SBATCH --job-name=test
 #SBATCH --output=%j.out
 #SBATCH --error=%j.err
-#SBATCH --time=04:00:00
+#SBATCH --time=24:00:00
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=2G
 

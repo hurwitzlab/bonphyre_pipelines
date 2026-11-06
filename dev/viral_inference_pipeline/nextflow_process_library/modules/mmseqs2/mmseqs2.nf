@@ -1,26 +1,23 @@
 #!/usr/bin/env nextflow
 
 // Cluster sequences into representative OTU-style clusters with mmseqs2 easy-cluster
-process mmseqs_cluster {
+process mmseqs_easy_cluster {
     label "process_high"
+    label "publish_final_pooled"
     container "${params.container__mmseqs2}"
-    // No sampleid here (clusters a whole sequence corpus, not per-sample) so
-    // the Closure-based publishDir convention (which takes sampleid) doesn't
-    // apply -- stays a plain path.
-    publishDir "${params.mmseqs2_outdir}", mode: 'copy'
 
     input:
-        path(all_seqs)
+        tuple val(pooledid), path(all_seqs)
 
     output:
-        path("${params.mmseqs2_prefix}_rep_seq.fasta"), emit: representative_seqs
-        path("${params.mmseqs2_prefix}_cluster.tsv"), emit: clusters
+        tuple val(pooledid), path("${pooledid}_rep_seq.fasta"), emit: representative_seqs
+        tuple val(pooledid), path("${pooledid}_cluster.tsv"), emit: clusters
 
     shell:
     '''
     mmseqs easy-cluster \
     !{all_seqs} \
-    !{params.mmseqs2_prefix} \
+    !{pooledid} \
     tmp \
     --min-seq-id !{params.mmseqs2_minseqid} \
     --cov-mode !{params.mmseqs2_covmode} \
