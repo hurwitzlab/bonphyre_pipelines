@@ -4,7 +4,7 @@
 def helpMessage() {
     log.info """
        Usage:
-           nextflow run viral_inference_benchmark.nf --contigs '/path/to/contigs/*/contigs.fa' --reads '/path/to/reads/*/R{1,2}.fastq.gz' --project_id
+           nextflow run i_mg_viralinfbenchmark.nf --contigs '/path/to/contigs/*/contigs.fa' --reads '/path/to/reads/*/R{1,2}.fastq.gz' --project_id
 
        Required arguments:
            --contigs     Path to contigs
