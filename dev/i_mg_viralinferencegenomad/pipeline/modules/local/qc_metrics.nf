@@ -49,3 +49,30 @@ process summarize_viral_filter {
     '''
 }
 
+
+// Count primary reads going into bwa mem and how many of them mapped, from the raw bwa SAM
+// (before sam_to_bam drops unmapped reads). Primary counts exclude secondary/supplementary
+// alignments, so each read is counted once (R1 and R2 counted separately). Needs samtools >= 1.13.
+process mapping_stats {
+    label "process_single"
+    container "${params.container__samtools}"
+    tag "${sampleid}"
+
+    input:
+        tuple val(sampleid), path(sam_file)
+
+    output:
+        tuple val(sampleid), env('MAPPING_ROW'), emit: mapping_counts
+
+    shell:
+    '''
+    samtools flagstat -@ !{task.cpus} -O tsv !{sam_file} > flagstat.tsv
+    TOTAL=$(awk -F'\\t' '$3 == "primary"        { print $1 }' flagstat.tsv)
+    MAPPED=$(awk -F'\\t' '$3 == "primary mapped" { print $1 }' flagstat.tsv)
+    if [ -z "$TOTAL" ] || [ -z "$MAPPED" ]; then
+        echo "ERROR: could not find 'primary'/'primary mapped' rows in samtools flagstat output (samtools >= 1.13 required)" >&2
+        exit 1
+    fi
+    MAPPING_ROW="${TOTAL}	${MAPPED}"
+    '''
+}
