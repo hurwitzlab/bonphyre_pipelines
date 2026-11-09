@@ -8,7 +8,7 @@ def helpMessage() {
 
        Required arguments:
            --reads     Path to paired-end reads
-           --projectid Name of project id
+           --project_id Project name; outputs go to <data_lake_dir>/<project_id>/...
 
        Optional arguments:
            --outdir    Output directory (default: ./results)
@@ -48,6 +48,12 @@ publish @ ${params.outdir}
         // Invoke the function above which prints the help message
         helpMessage()
         // Exit out and do not run anything else
+        exit 1
+    }
+
+    // Make sure --project_id is provided (outdir is built from it)
+    if ( !params.project_id ) {
+        log.error "Missing required parameter --project_id (every run is namespaced under a project on the data lake, e.g. --project_id my_project)"
         exit 1
     }
     // -----------------------------------------------------------------------------------------------------------------------------
