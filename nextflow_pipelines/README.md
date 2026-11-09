@@ -39,7 +39,7 @@ nextflow_pipelines/
 Each `<name>.config` includes `'../../nextflow.config'`, which pulls in
 `conf/site.config` — so `params.databases_dir` and
 `params.singularity_images_dir` are available to every pipeline without
-being redefined per pipeline. `i_mg_viralinference.config` additionally
+being redefined per pipeline. `i_mg_viralinferencegenomad.config` additionally
 includes `'../../conf/site.config'` directly, *before* that, because it
 needs `params.data_lake_dir` early to build `params.outdir` (which must
 already be set by the time `nextflow.config` is parsed — see the comments
@@ -82,8 +82,8 @@ its databases, containers, and where to publish results.
 Everything else is passed at the command line, not edited in a file:
 
 ```bash
-nextflow run workflows/i_mg_viralinference/i_mg_viralinference.nf \
-    -c workflows/i_mg_viralinference/i_mg_viralinference.config \
+nextflow run workflows/i_mg_viralinferencegenomad/i_mg_viralinferencegenomad.nf \
+    -c workflows/i_mg_viralinferencegenomad/i_mg_viralinferencegenomad.config \
     -profile hazel \
     --reads '/path/to/your/reads/*_{1,2}.fastq.gz' \
     --project_id my_project
@@ -98,7 +98,7 @@ nextflow run workflows/i_mg_viralinference/i_mg_viralinference.nf \
   (or different pipelines'/versions') outputs never collide. `outdir` itself
   is *not* a flag you pass: it's built automatically as
   `"${data_lake_dir}/<project_id>/<pipeline_name>/<workflow_version>"` (see
-  `i_mg_viralinference.config`). You technically can still override it
+  `i_mg_viralinferencegenomad.config`). You technically can still override it
   directly with `--outdir` since it's a normal `params.outdir` under the
   hood, but doing so opts you out of the data lake layout this convention
   exists for.
@@ -152,7 +152,7 @@ How it works:
   closures before calling their processes — that part is unchanged; only
   *who reads* those params moved, from each module's own `publishDir`
   directive to the centralized `withLabel:` blocks above.
-  `i_mg_viralinference.nf` does the same for `params.megahit_outdir` from
+  `i_mg_viralinferencegenomad.nf` does the same for `params.megahit_outdir` from
   the top-level manifest (megahit is called directly, not via a
   subworkflow).
 - Getting the manifest's exact declared filenames (not just directories)
@@ -167,7 +167,7 @@ Caveats:
   `--trimmomatic_outdir`-style CLI override this README used to promise for
   any `params.*` no longer does anything for these six, since each
   subworkflow overwrites them at runtime. See the comment block in
-  `i_mg_viralinference.config`'s INPUT/OUTPUT PARAMETERS section.
+  `i_mg_viralinferencegenomad.config`'s INPUT/OUTPUT PARAMETERS section.
 - Since the module itself no longer declares any `publishDir`, a labeled
   process silently publishes nothing at all if it's ever run by a pipeline
   that hasn't defined matching `withLabel:publish_intermediate`/

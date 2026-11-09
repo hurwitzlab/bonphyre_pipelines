@@ -1,8 +1,8 @@
 #!/usr/bin/env nextflow
 nextflow.enable.dsl=2
 
-// Full output manifest for the i_mg_viralinference workflow
-// (../workflows/i_mg_viralinference/i_mg_viralinference.nf), composed from
+// Full output manifest for the i_mg_viralinferencegenomad workflow
+// (../workflows/i_mg_viralinferencegenomad/i_mg_viralinferencegenomad.nf), composed from
 // each subworkflow's own manifest plus paths owned directly by the workflow.
 include { getReadqcManifest } from './manifest_s_i_mg_readqc.nf'
 include { getGenomadViralFilterManifest } from './manifest_s_i_mg_genomadviralfilter.nf'

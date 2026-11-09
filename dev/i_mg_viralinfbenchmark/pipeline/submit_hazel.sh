@@ -2,7 +2,7 @@
 #SBATCH --job-name=test
 #SBATCH --output=%j.out
 #SBATCH --error=%j.err
-#SBATCH --time=24:00:00
+#SBATCH --time=04:00:00
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=2G
 
@@ -16,8 +16,8 @@ module load nextflow/26.04.3 java/17 apptainer
 export NXF_APPTAINER_CACHEDIR="$APPTAINER_CACHEDIR"
 
 # --- Launch the pipeline ---
-nextflow run workflows/i_mg_viralinference/i_mg_viralinference.nf \
-    -c workflows/i_mg_viralinference/i_mg_viralinference.config \
+nextflow run workflows/i_mg_viralinfbenchmark/i_mg_viralinfbenchmark.nf \
+    -c workflows/i_mg_viralinfbenchmark/i_mg_viralinfbenchmark.config \
     -profile hazel \
     --project_id test \
     -resume
