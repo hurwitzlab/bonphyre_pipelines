@@ -559,5 +559,7 @@ Entry format:
   (based on `fixes_processes`) now matches dev's 10 modules.
 - Checks: `nextflow lint` gives no errors, and the config resolves with `-profile hazel`.
 - Not done yet: the `.claude/skills/manifest` skill and `subworkflows/CLAUDE.md` still
-  describe manifests. The workflow no longer exits early without `--project_id`
-  (outdir becomes `.../null/...`).
+  describe manifests.
+- Put back the `--project_id` check (dev had dropped it, so outdir became `.../null/...`), in
+  both `nextflow_pipelines/` and `dev/`. Fixed the help text, which said `--projectid`.
+  Tested: a run without it now stops with the error.
