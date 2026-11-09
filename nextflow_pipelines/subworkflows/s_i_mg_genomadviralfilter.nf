@@ -8,7 +8,6 @@ include { pileup } from '../../../nextflow_process_library/modules/bbmap/bbmap.n
 include { filter_viral_contigs } from '../../../nextflow_process_library/modules/filter_viral_genomad/filter_viral_genomad.nf' //filter viral contigs based on coverage
 include { extract_fasta_viral_selection } from '../../../nextflow_process_library/modules/filter_viral_genomad/filter_viral_genomad.nf' //extract fasta sequences from viral contigs that passed filter
 include { summarize_viral_filter } from '../modules/local/qc_metrics.nf'
-include { getGenomadViralFilterManifest } from '../manifests/manifest_s_i_mg_genomadviralfilter.nf'
 
 workflow s_i_mg_genomadviralfilter {
     take:
@@ -18,21 +17,7 @@ workflow s_i_mg_genomadviralfilter {
         reads_ch            // clean reads, tuple (sampleid, r1, r2)
 
     main:
-        // Point genomad/checkv/pileup's publishDir (resolved centrally via
-        // conf/base.config's publish_final/publish_intermediate withLabel:
-        // blocks -- see that file) at this subworkflow's manifest-declared,
-        // per-sample layout instead of a flat, tool-named directory.
-        def viral_filter_manifest = getGenomadViralFilterManifest()
-        params.genomad_outdir = { sid -> "${params.outdir}/${sid}/${new File(viral_filter_manifest.viral_summary_dir).parent}" }
-        params.checkv_outdir  = { sid -> "${params.outdir}/${sid}/${new File(viral_filter_manifest.quality_dir).parent}" }
-        params.pileup_outdir  = { sid -> "${params.outdir}/${sid}/${new File(viral_filter_manifest.coverage).parent}" }
-        params.filter_viral_contigs_outdir = { sid -> "${params.outdir}/${sid}/${new File(viral_filter_manifest.viral_selection).parent}" }
-        // extract_fasta_viral_selection writes into its own "viral_selection/" subdirectory,
-        // so its outdir is one level up from that -- parent of parent, unlike the flat-file
-        // outputs above.
-        params.extract_fasta_viral_selection_outdir = { sid -> "${params.outdir}/${sid}/${new File(new File(viral_filter_manifest.virus_fasta).parent).parent}" }
-
-        // 1. Run genomad viral inference
+          // 1. Run genomad viral inference
         genomad(assembled_contigs, genomad_db_ch)
 
         // 2. Estimate viral inference quality with CheckV
@@ -75,8 +60,7 @@ workflow s_i_mg_genomadviralfilter {
              .map { sampleid, viral_selection, contigs, checkv_dir -> tuple(sampleid, viral_selection, contigs, checkv_dir) }  // might not be necessary
         extract_fasta_viral_selection(extract_fasta_viral_selection_ch)
 
-
-        // METRICS
+	// METRICS
         // QC/benchmark metric: contigs assembled vs. flagged viral, mean CheckV
         // completeness, mean coverage, and the final post-filter/extraction viral
         // yield — flags samples with poor viral yield.
@@ -101,8 +85,8 @@ workflow s_i_mg_genomadviralfilter {
 
     emit:
         checkv_output   = checkv.out.quality_assessment
-        metrics         = metrics_ch   // (sampleid, "n_contigs\tn_viral\tmean_completeness\ttotal_viral_genes\ttotal_host_genes\tmean_coverage\tn_passed_filter\tn_viral_extracted\tn_provirus_extracted\tfilter_extract_match")
         viral_selection = filter_viral_contigs.out.viral_selection          // (sampleid, selection1.csv) -- viruses/proviruses that passed the checkV+coverage filter
         viral_fasta     = extract_fasta_viral_selection.out.viral_fasta     // (sampleid, sel1_viral.fa) -- extracted viral sequences
         provirus_fasta  = extract_fasta_viral_selection.out.provirus_fasta  // (sampleid, sel1_provirus.fa) -- extracted proviral sequences
+	metrics = metrics_ch
 }

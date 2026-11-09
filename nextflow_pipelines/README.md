@@ -121,61 +121,28 @@ To add or change a tool module, work in `nextflow_process_library`, following th
 conventions in its `modules/CLAUDE.md`, and bump the relative-path reference
 here only if the module's filename changes.
 
-## `publishDir` is wired to `manifests/`
+## Where outputs are published
 
-Every process's output location is now built from the manifest that
-`manifests/` declares for it, not a flat `params.*_outdir` string:
-`bbduk`, `trimmomatic`, `megahit`, `genomad`, `checkv`, and `pileup` all
-publish to `"${params.outdir}/<sampleid>/<manifest-declared subpath>"`, so
-everything for one sample lands in a single directory tree instead of
-interleaving by filename across tool-named directories.
+Modules in `nextflow_process_library` carry no `publishDir` of their own.
+Each one has a publish label next to its `process_<tier>` label, and
+`conf/base.config` turns that label into a `publishDir`:
 
-How it works:
-- None of `bbduk`/`trimmomatic`/`megahit`/`genomad`/`checkv`/`pileup` has a
-  `publishDir` directive in `nextflow_process_library` at all any more. Each just
-  carries a second label — `publish_intermediate` (`bbduk`) or
-  `publish_final` (the other five) — alongside its usual `label
-  "process_<tier>"`. `conf/base.config`'s `withLabel:publish_intermediate`/
-  `withLabel:publish_final` blocks are what actually give a labeled process
-  its `publishDir`, dispatched per-process via `task.process` (stripped of
-  its subworkflow-qualified prefix) to look up that process's own
-  `params.<tool>_outdir` — same duality as before
-  (`instanceof Closure ? ...(sampleid) : ...`), just resolved centrally in
-  one place instead of duplicated into every module. See
-  `nextflow_process_library/modules/CLAUDE.md`'s publishDir section (the
-  "Alternative" bullet) and `conf/base.config` here for the mechanism.
-- `s_i_mg_readqc.nf` and `s_i_mg_genomadviralfilter.nf` each still read
-  their own subworkflow manifest (`getReadqcManifest()`,
-  `getGenomadViralFilterManifest()`) and set `params.bbduk_outdir`,
-  `params.trimmomatic_outdir`, `params.genomad_outdir`,
-  `params.checkv_outdir`, and `params.pileup_outdir` to sampleid-taking
-  closures before calling their processes — that part is unchanged; only
-  *who reads* those params moved, from each module's own `publishDir`
-  directive to the centralized `withLabel:` blocks above.
-  `i_mg_viralinferencegenomad.nf` does the same for `params.megahit_outdir` from
-  the top-level manifest (megahit is called directly, not via a
-  subworkflow).
-- Getting the manifest's exact declared filenames (not just directories)
-  also meant simplifying `genomad`/`checkv`/`megahit`'s own output paths in
-  `nextflow_process_library` to drop their internal, redundant `${sampleid}/`
-  nesting — sample-scoping now lives entirely in `publishDir`.
+| Label | Published to | Mode |
+|---|---|---|
+| `publish_intermediate` | `<outdir>/<sampleid>/<process name>/` | `publish_mode_intermediate` (default `symlink`) |
+| `publish_final` | `<outdir>/<sampleid>/<process name>/` | `publish_mode_final` (default `copy`) |
+| `publish_intermediate_pooled` | `<outdir>/<pooledid>/<process name>/` | `publish_mode_intermediate` |
+| `publish_final_pooled` | `<outdir>/<pooledid>/<process name>/` | `publish_mode_final` |
 
-Caveats:
-- `bbduk` lives inside `bbmap.nf` in `nextflow_process_library`, not its own
-  `bbduk.nf` file — `include { bbduk } from '.../nextflow_process_library/modules/bbmap/bbmap.nf'`.
-- The six `*_outdir` params are no longer independently settable — the
-  `--trimmomatic_outdir`-style CLI override this README used to promise for
-  any `params.*` no longer does anything for these six, since each
-  subworkflow overwrites them at runtime. See the comment block in
-  `i_mg_viralinferencegenomad.config`'s INPUT/OUTPUT PARAMETERS section.
-- Since the module itself no longer declares any `publishDir`, a labeled
-  process silently publishes nothing at all if it's ever run by a pipeline
-  that hasn't defined matching `withLabel:publish_intermediate`/
-  `withLabel:publish_final` blocks in its own config. Not a risk today —
-  these six processes have no other consumer — but worth knowing before
-  reusing one of them in a new pipeline.
-- `publish_mode_intermediate` (default `'symlink'`) and `publish_mode_final`
-  (default `'copy'`) in `conf/base.config` control *how* files land for
-  every `publish_intermediate`/`publish_final` process at once — override
-  either at the command line (e.g. `--publish_mode_intermediate copy`) to
-  change it for a whole tier without touching any module or subworkflow.
+- `<process name>` is the short name (the subworkflow prefix is removed), e.g.
+  `<outdir>/sampleA/trimmomatic/`.
+- The `*_pooled` labels are for steps that make one output from all samples
+  together (the viral catalog, the abundance table). Those processes take
+  `val(pooledid)` in place of `val(sampleid)`, e.g. `viral_catalog`.
+- A process with a publish label publishes nothing if the pipeline's config
+  has no matching `withLabel:` block.
+- Intermediate outputs are symlinks into `work/`, so they break if `work/`
+  is deleted. This is why `cleanup = false` in `nextflow.config`.
+
+The manifest-based layout used before (`manifests/`, `params.<tool>_outdir`)
+has been removed. A copy was kept outside the repo for review.

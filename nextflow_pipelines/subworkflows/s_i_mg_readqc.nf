@@ -1,10 +1,8 @@
 #!/usr/bin/env nextflow
-nextflow.enable.dsl=2
 
 include { bbduk } from '../../../nextflow_process_library/modules/bbmap/bbmap.nf'
 include { trimmomatic } from '../../../nextflow_process_library/modules/trimmomatic/trimmomatic.nf'
 include { seqkit_stats as seqkit_stats_raw; seqkit_stats as seqkit_stats_clean } from '../modules/local/qc_metrics.nf'
-include { getReadqcManifest } from '../manifests/manifest_s_i_mg_readqc.nf'
 
 workflow s_i_mg_readqc {
     take:
@@ -12,15 +10,6 @@ workflow s_i_mg_readqc {
         adapters_ch    // path to adapters file, collected
 
     main:
-        // Point bbduk's and trimmomatic's publishDir (resolved centrally via
-        // conf/base.config's publish_final/publish_intermediate withLabel:
-        // blocks -- see that file) at this subworkflow's manifest-declared,
-        // per-sample layout ("${params.outdir}/<sampleid>/fastq/...") instead
-        // of a flat, tool-named directory.
-        def readqc_manifest = getReadqcManifest()
-        params.bbduk_outdir       = { sid -> "${params.outdir}/${sid}/${new File(readqc_manifest.adapter_trimmed_r1).parent}" }
-        params.trimmomatic_outdir = { sid -> "${params.outdir}/${sid}/${new File(readqc_manifest.clean_r1).parent}" }
-
         // Trim adapters with bbduk
         bbduk(reads_ch, adapters_ch)
 

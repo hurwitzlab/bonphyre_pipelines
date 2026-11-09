@@ -540,3 +540,24 @@ Entry format:
   copy), so the sorted BAM + `.bai` are copied to
   `<outdir>/<sampleid>/index_bam/`. The folder is named after the process, not
   "bam". The SAM, raw BAM and the sorted BAM from `sort_bam` stay in `work/` only.
+
+## 2026-11-09
+- Copied the tested `dev/i_mg_viralinferencegenomad/pipeline/` into `nextflow_pipelines/`
+  (branch `dev-to-production-viralinferencegenomad`). The only difference left is the
+  `nextflow_process_library` include paths: they're one `../` deeper here, because
+  `build.sh` nests the library inside the dev copy.
+- Took everything from dev on purpose, including the Hazel paths in `site.config`, the
+  `compute_partners` queue/account in `base.config`, `cleanup = false`, trace/report/timeline
+  turned off, and the `hazel_test` profile.
+- Removed the manifest-based publishDir (`manifests/`, `resolvePublishDir`,
+  `params.<tool>_outdir`). Outputs now go to `<outdir>/<sampleid or pooledid>/<process>/`
+  using the publish labels in `base.config`. The old manifests were saved to
+  `~/Desktop/bonphyre_manifests_backup_2026-11-09/` to review later. Updated the
+  publishDir section in `nextflow_pipelines/README.md` to match.
+- `s_i_mg_bwamapping.nf` stub removed and replaced by `s_i_mg_abundancetable.nf`.
+- Shared modules: `nextflow_process_library` branch `viral-inference-process-fixes`
+  (based on `fixes_processes`) now matches dev's 10 modules.
+- Checks: `nextflow lint` gives no errors, and the config resolves with `-profile hazel`.
+- Not done yet: the `.claude/skills/manifest` skill and `subworkflows/CLAUDE.md` still
+  describe manifests. The workflow no longer exits early without `--project_id`
+  (outdir becomes `.../null/...`).
