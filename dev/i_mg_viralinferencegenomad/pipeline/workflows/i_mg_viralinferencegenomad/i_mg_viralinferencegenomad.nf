@@ -4,7 +4,7 @@
 def helpMessage() {
     log.info """
        Usage:
-           nextflow run i_mg_viralinference.nf --reads '/path/to/reads/*/R{1,2}.fastq.gz'
+           nextflow run i_mg_viralinferencegenomad.nf --reads '/path/to/reads/*/R{1,2}.fastq.gz'
 
        Required arguments:
            --reads     Path to paired-end reads

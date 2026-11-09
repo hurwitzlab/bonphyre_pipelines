@@ -31,8 +31,8 @@
 #                       <output_dir> (default: <workflow_name>)
 #
 # Example:
-#   ./build.sh i_mg_viralinference /tmp/i_mg_viralinference_build
-#   ./build.sh -n viral_inference_pipeline i_mg_viralinference ../dev
+#   ./build.sh i_mg_viralinferencegenomad /tmp/i_mg_viralinferencegenomad_build
+#   ./build.sh -n i_mg_viralinferencegenomad i_mg_viralinferencegenomad ../dev
 #
 # <output_dir> must not already exist. After copying, the script runs
 # `nextflow run` on the copy once as a smoke test (from a scratch directory,
