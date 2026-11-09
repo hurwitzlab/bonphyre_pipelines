@@ -71,9 +71,6 @@ publish @ ${params.outdir}
     // 3. Pipeline
     // -----------------------------------------------------------------------------------------------------------------------------
     // Trim and filter reads
-
-    kraken2(reads_ch)
-    
     s_i_mg_readqc(reads_ch, adapters_ch)
 
     // Assemble paired reads into contigs with MEGAHIT.
