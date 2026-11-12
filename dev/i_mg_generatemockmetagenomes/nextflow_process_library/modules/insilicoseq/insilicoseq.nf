@@ -119,8 +119,8 @@ process create_mock_community_reads_draft_abundance_file {
     awk -F'\\t' -v OFS='\\t' '{ n = split($1, p, "/"); $1 = p[n]; print }' !{abundance_tsv} > abundance.tsv
 
     iss generate \
-    --draft $(cut -f1 !{abundance_tsv}) \
-    --abundance_file !{abundance_tsv} \
+    --draft $(cut -f1 abundance.tsv) \
+    --abundance_file abundance.tsv \
     --model !{model} \
     --n_reads !{n_reads} \
     --seed !{seed} \
