@@ -1,8 +1,6 @@
 #!/usr/bin/env nextflow
 
-// Benchmark/QC metric processes local to this pipeline (not shared via
-// nextflow_process_library, since these encode this repo's own benchmark logic —
-// see subworkflows/CLAUDE.md).
+// Metric and parsing processes local to this pipeline
 
 // Count reads in a fastq file with seqkit, tagged by QC stage (e.g. "raw", "clean")
 process seqkit_stats {
@@ -48,5 +46,33 @@ process summarize_viral_filter {
         --outfile summary.tsv
 
     METRICS_ROW=$(cat summary.tsv)
+    '''
+}
+
+
+// Count primary reads going into bwa mem and how many of them mapped, from the raw bwa SAM
+// (before sam_to_bam drops unmapped reads). Primary counts exclude secondary/supplementary
+// alignments, so each read is counted once (R1 and R2 counted separately). Needs samtools >= 1.13.
+process mapping_stats {
+    label "process_single"
+    container "${params.container__samtools}"
+    tag "${sampleid}"
+
+    input:
+        tuple val(sampleid), path(sam_file)
+
+    output:
+        tuple val(sampleid), env('MAPPING_ROW'), emit: mapping_counts
+
+    shell:
+    '''
+    samtools flagstat -@ !{task.cpus} -O tsv !{sam_file} > flagstat.tsv
+    TOTAL=$(awk -F'\\t' '$3 == "primary"        { print $1 }' flagstat.tsv)
+    MAPPED=$(awk -F'\\t' '$3 == "primary mapped" { print $1 }' flagstat.tsv)
+    if [ -z "$TOTAL" ] || [ -z "$MAPPED" ]; then
+        echo "ERROR: could not find 'primary'/'primary mapped' rows in samtools flagstat output (samtools >= 1.13 required)" >&2
+        exit 1
+    fi
+    MAPPING_ROW="${TOTAL}	${MAPPED}"
     '''
 }
