@@ -71,7 +71,7 @@ process index {
     '''
 }
 
-// Convert a sample's alignment file (BAM/SAM/CRAM) to BAM and index it
+// Convert a sample's alignment file (BAM/SAM/CRAM, any sort order) to a coordinate-sorted, indexed BAM
 process to_bam {
     label "process_single"
     container "${params.container__samtools}"
@@ -85,7 +85,8 @@ process to_bam {
 
     shell:
     '''
-    samtools view -@ !{task.cpus} -Sb !{alignment_file} > !{sampleid}.bam
+    # bam indexes require coordinate order; raw aligner output is in read (pair) order
+    samtools sort -@ !{task.cpus} -m !{task.memory.toMega() / task.cpus as int}M -o !{sampleid}.bam !{alignment_file}
     samtools index -@ !{task.cpus} -b !{sampleid}.bam !{sampleid}.bam.bai
     '''
 }
