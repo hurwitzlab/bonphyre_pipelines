@@ -2,7 +2,7 @@
 
 // Assemble paired reads into contigs with megahit
  process megahit {
-    label "process_medium"
+    label "process_high"
     label "publish_final"
     container "${params.container__megahit}"
 
@@ -16,6 +16,7 @@
     '''
     megahit \
     -t !{task.cpus} \
+    -m !{(long)(task.memory.toBytes() * 0.9)} \
     --presets !{params.megahit_preset} \
     -1 !{clean_r1} \
     -2 !{clean_r2} \
