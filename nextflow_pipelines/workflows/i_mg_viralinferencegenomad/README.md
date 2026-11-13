@@ -252,7 +252,15 @@ viralinferencegenomad_build/
     └── nextflow_process_library/
 ```
 
-In `build_validation.log`, errors about missing reads, databases or containers are **expected** (the smoke test has none of your data). `Script compilation failed` is a **real problem**: read the message under it. The config files in the copy work exactly as in section 4, so edit them in `pipeline/`. Keep `pipeline/` and `nextflow_process_library/` together. To pick up updates, `git pull` both repos and build into a new folder.
+**Why `pipeline/` and `nextflow_process_library/` sit side by side.** The tool modules live in their own repo because every lab pipeline uses the same ones: a module is written, tested and fixed once in `nextflow_process_library`, and every pipeline that includes it gets the fix. Nextflow has no package manager for modules. A workflow loads a module by its relative file path, e.g. `include { genomad } from '../../nextflow_process_library/modules/genomad/genomad.nf'`, so the library has to sit at a fixed place relative to the pipeline's files. In a clone, that place is next to the whole repo (section 5.1). `build.sh` recreates the same side-by-side layout one level down, inside one folder:
+
+- `pipeline/` keeps exactly the same layout as `nextflow_pipelines/`. Only the paths to the library change, by one `../`: from a subworkflow, `../../../nextflow_process_library/...` becomes `../../nextflow_process_library/...`.
+- The copy is self-contained. You can move or share the one folder without cloning either repo, and it keeps working as long as the two subfolders stay together.
+- It stays clear which files are shared modules (unchanged copies from the library, easy to compare with the library repo) and which belong to this pipeline.
+
+The `dev/<pipeline>/` folders in `bonphyre_pipelines` are built copies with this same layout, which is why their include paths have one `../` fewer than the ones in `nextflow_pipelines/`.
+
+In `build_validation.log`, errors about missing reads, databases or containers are **expected** (the smoke test has none of your data). `Script compilation failed` is a **real problem**: read the message under it. The config files in the copy work exactly as in section 4, so edit them in `pipeline/`. To pick up updates, `git pull` both repos and build into a new folder.
 
 ## 6. Preparing input data
 
