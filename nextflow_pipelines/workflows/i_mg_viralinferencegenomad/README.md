@@ -278,27 +278,58 @@ On a cluster, don't run Nextflow on the login node. Submit the launch command it
 
 ## 8. Outputs
 
+All results go under one folder per run:
+
 ```
 <data_lake_dir>/<project_id>/i_mg_viralinferencegenomad/1.0.0/
-├── <sampleid>/                 one folder per sample, one subfolder per step
-│   ├── bbduk/  trimmomatic/                     clean reads
-│   ├── megahit/                                 contigs
-│   ├── genomad/  checkv/  bbwrap/  pileup/      viral calls and coverage
-│   ├── filter_viral_contigs/  extract_fasta_viral_selection/   filtered viral + proviral sequences
-│   └── index_bam/                               sorted BAM + .bai of reads mapped to the catalog
-├── viral_catalog/              steps that combine all samples
-│   ├── viral_catalog.fna                        every sample's viral sequences, concatenated
-│   ├── mmseqs_easy_cluster/                     clustered catalog (representative sequences)
-│   ├── bwa_index/
-│   └── coverm/viral_catalog.txt                 the abundance table
-└── pipeline_info/
-    └── metrics_summary.tsv     one row per sample: reads kept, contigs, viral counts, % reads mapped
 ```
 
-- **Each subfolder is named after the step (process)** that made it.
-- **Intermediate outputs are symlinks** into Nextflow's `work/` folder; final outputs are real copies. The pipeline doesn't delete `work/` (so `-resume` keeps working), and `work/` gets large. Once you've checked a run's results, clear it with `nextflow clean -f` or by deleting `<data_lake_dir>/nf_work`. That breaks the intermediate symlinks.
+Inside it, there's one folder per sample, one `viral_catalog/` folder for the steps that combine all samples, and `pipeline_info/`. Each subfolder is named after the step (Nextflow process) that wrote it. Steps not listed here (bbwrap, seqkit, samtools sorting, the QC-metric steps) don't save anything to the output folder; their files stay in `work/`.
+
+```
+<sampleid>/
+├── bbduk/                          ↪ <sampleid>_adapter_trimmed_r{1,2}.fastq.gz
+├── trimmomatic/                    <sampleid>_clean_r{1,2}.fastq.gz
+├── megahit/assembly/               contigs.fa
+├── genomad/contigs_summary/        geNomad virus and plasmid calls
+├── checkv/quality/                 CheckV completeness and contamination
+├── pileup/                         coverage.txt (read coverage of each contig)
+├── filter_viral_contigs/           ↪ <sampleid>_selection1.csv (contigs that passed the filter)
+├── extract_fasta_viral_selection/viral_selection/
+│                                   <sampleid>_sel1_viral.fa, <sampleid>_sel1_provirus.fa,
+│                                   <sampleid>_map_virus.csv, <sampleid>_map_provirus.csv
+└── index_bam/                      <sampleid>.sorted.bam, <sampleid>.sorted.bam.bai
+
+viral_catalog/
+├── viral_catalog.fna               every sample's viral + proviral sequences, concatenated
+├── mmseqs_easy_cluster/            viral_catalog_rep_seq.fasta (one sequence per cluster),
+│                                   viral_catalog_cluster.tsv (which sequence is in which cluster)
+├── bwa_index/                      ↪ BWA index of viral_catalog_rep_seq.fasta
+└── coverm/                         viral_catalog.txt (the abundance table)
+
+pipeline_info/
+└── metrics_summary.tsv             one row of QC numbers per sample
+```
+
+↪ = symlink into `work/` (see below). Everything else is a real copy.
+
+What the main files are:
+
+| File | What it is |
+|---|---|
+| `trimmomatic/<sampleid>_clean_r{1,2}.fastq.gz` | Clean reads after adapter and quality trimming. These are used for assembly and mapping. |
+| `megahit/assembly/contigs.fa` | The sample's assembly. |
+| `extract_fasta_viral_selection/viral_selection/*_sel1_viral.fa`, `*_sel1_provirus.fa` | The sample's viral and proviral sequences after the geNomad/CheckV/coverage filter. Sequence names start with the sample ID, so they stay unique once samples are combined. The `*_map_*.csv` files link each new name back to its original contig. |
+| `viral_catalog/mmseqs_easy_cluster/viral_catalog_rep_seq.fasta` | The clustered viral catalog: one representative sequence per cluster of near-identical sequences (≥ 95% identity, ≥ 85% coverage by default). |
+| `viral_catalog/coverm/viral_catalog.txt` | The abundance table. One row per catalog sequence and one column per sample. The values are read counts by default (`coverm_m`). |
+| `index_bam/<sampleid>.sorted.bam` | The sample's clean reads mapped to the catalog, with unmapped reads removed. |
+| `pipeline_info/metrics_summary.tsv` | Per-sample QC: raw and clean reads, % of reads kept, number of contigs, number of viral sequences, mean CheckV completeness, mean coverage, and % of reads that mapped to the catalog. |
+
+Things to know:
+
+- **Symlinked outputs (↪) break if you clear `work/`.** The pipeline doesn't delete `work/` (so `-resume` keeps working), and it gets large, mostly from each sample's SAM file. Once you've checked a run's results, clear it with `nextflow clean -f` or by deleting `<data_lake_dir>/nf_work`. If you need the adapter-trimmed reads, the filter table or the BWA index afterwards, copy them out first.
 - **QC warnings appear in the console log** during the run, e.g. when a sample keeps fewer than 50% of its reads after trimming, yields no viral contigs, or has under 1% of its reads mapping to the catalog. The run doesn't stop for these, but check them. The thresholds are the `qc_*` parameters in the workflow config.
-- A sample that drops out partway shows `NA` in the later columns of `metrics_summary.tsv`.
+- **A sample that drops out partway shows `NA`** in the later columns of `metrics_summary.tsv`.
 
 ## 9. Resources and retries
 
