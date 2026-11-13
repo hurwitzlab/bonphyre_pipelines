@@ -4,6 +4,9 @@ Nextflow pipelines for viral inference benchmarking. Each pipeline lives under
 `workflows/<name>/` and is built from pipeline-specific `subworkflows/` and
 tool modules shared lab-wide (see **Modules** below).
 
+**To set up and run `i_mg_viralinferencegenomad`, see its user guide:
+[`workflows/i_mg_viralinferencegenomad/README.md`](workflows/i_mg_viralinferencegenomad/README.md).**
+
 ## Prerequisites
 
 Clone this repo and [`nextflow_process_library`](https://github.com/hurwitzlab/nextflow_process_library)
