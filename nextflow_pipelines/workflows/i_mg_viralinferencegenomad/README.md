@@ -44,13 +44,13 @@ Why the split: the files are layered from "specific to this run" down to "specif
 
 ```
 nextflow_pipelines/
-├── nextflow.config                          ← HOW to run: profiles (executor, containers) per cluster
+├── nextflow.config        ← HOW to run: one profile per cluster
 ├── conf/
-│   ├── site.config                          ← WHERE things are: databases, images, results root
-│   └── base.config                          ← HOW MUCH: CPU/memory/time per resource label, output layout
+│   ├── site.config        ← WHERE things are: databases, images, results
+│   └── base.config        ← HOW MUCH: Slurm queue/account, CPU/memory/time
 └── workflows/i_mg_viralinferencegenomad/
-    ├── i_mg_viralinferencegenomad.nf        ← the workflow itself (never edit to run it)
-    └── i_mg_viralinferencegenomad.config    ← WHAT to run: inputs, databases, containers, tool settings
+    ├── i_mg_viralinferencegenomad.nf       ← the workflow (never edit to run it)
+    └── i_mg_viralinferencegenomad.config   ← WHAT to run: inputs, tools, settings
 ```
 
 | File | Scope | What it holds |
@@ -73,9 +73,15 @@ includeConfig '../../conf/base.config'   // how much each job gets
 includeConfig '../../nextflow.config'    // profiles
 
 params.project_id = null
-params.outdir = "${params.data_lake_dir}/${params.project_id}/${params.pipeline_name}/${params.workflow_version}"
+params.outdir = "${params.data_lake_dir}/${params.project_id}/" +
+                "${params.pipeline_name}/${params.workflow_version}"
 
-params { reads = ...; genomad_db = "${params.databases_dir}/..."; container__genomad = "${params.singularity_images_dir}/..."; ... }
+params {
+    reads              = ...
+    genomad_db         = "${params.databases_dir}/genomad_db/genomad_db/"
+    container__genomad = "${params.singularity_images_dir}/...genomad...sif"
+    ...
+}
 ```
 
 Three things follow from this order:
@@ -89,8 +95,11 @@ Three things follow from this order:
 When the same setting is defined in more than one place, Nextflow uses the one that comes **last**, and command-line values beat all files:
 
 ```
-lowest                                                            highest
-site.config / base.config  →  nextflow.config (+ -profile)  →  workflow config  →  -params-file  →  --flags
+lowest   site.config / base.config
+   ↓     nextflow.config (+ the -profile you chose)
+   ↓     workflow config
+   ↓     -params-file
+highest  --flags on the command line
 ```
 
 So for a one-off change you don't edit a file at all. `--trimmomatic_minlen 60` or `--reads '/my/reads/*_R{1,2}.fastq.gz'` overrides the value in the workflow config for that run only. Edit a file only to change a value **every time** you run.
@@ -146,17 +155,21 @@ Open `nextflow_pipelines/conf/site.config` and point the four folders at places 
 
 ```groovy
 params {
-    databases_dir          = '/path/to/your/databases'     // contains adapters/, genomad_db/, checkv_db/
-    singularity_images_dir = '/path/to/your/sif/images'    // released .sif images
-    singularity_images_dev = '/path/to/your/sif/images'    // can be the same folder
-    data_lake_dir          = '/share/<group>/<you>'        // results and work/ go under here
+    // folder holding adapters/, genomad_db/, checkv_db/
+    databases_dir          = '/path/to/your/databases'
+    // released .sif images, and images in development (can be the same folder)
+    singularity_images_dir = '/path/to/your/sif/images'
+    singularity_images_dev = '/path/to/your/sif/images'
+    // results and Nextflow's work/ go under here
+    data_lake_dir          = '/share/<group>/<you>'
 }
 ```
 
 Use absolute paths that start with `/`. Then change the Slurm queue and account (section 5.4). To make a `.sif` image from a public container (names are in the `container__*` lines of the workflow config):
 
 ```
-singularity pull quay.io_biocontainers_megahit:1.2.9--h8b12597_0.sif docker://quay.io/biocontainers/megahit:1.2.9--h8b12597_0
+singularity pull quay.io_biocontainers_megahit:1.2.9--h8b12597_0.sif \
+    docker://quay.io/biocontainers/megahit:1.2.9--h8b12597_0
 ```
 
 Keep using `-profile hazel`.
@@ -195,11 +208,11 @@ profiles {
         workDir = "${params.data_lake_dir}/nf_work"
 
         process {
-            executor     = 'slurm'                   // or 'sge', 'pbs', 'lsf', 'local'
+            executor     = 'slurm'                   // or sge, pbs, lsf, local
             queue        = 'my_queue'                // if your site requires one
-            beforeScript = 'module load apptainer'   // how Singularity is loaded; delete if already on PATH
+            beforeScript = 'module load apptainer'   // delete if already on PATH
 
-            resourceLimits = [                       // the largest job one node can take
+            resourceLimits = [                       // largest job one node takes
                 memory: 256.GB,
                 cpus:   32,
                 time:   72.h
@@ -209,7 +222,7 @@ profiles {
         singularity {
             enabled    = true
             autoMounts = true
-            cacheDir   = '/scratch/<you>/singularity_cache'   // writable, with plenty of space
+            cacheDir   = '/scratch/<you>/sif_cache'   // writable, lots of space
         }
     }
 }
@@ -288,27 +301,29 @@ Inside it, there's one folder per sample, one `viral_catalog/` folder for the st
 
 ```
 <sampleid>/
-├── bbduk/                          ↪ <sampleid>_adapter_trimmed_r{1,2}.fastq.gz
-├── trimmomatic/                    <sampleid>_clean_r{1,2}.fastq.gz
-├── megahit/assembly/               contigs.fa
-├── genomad/contigs_summary/        geNomad virus and plasmid calls
-├── checkv/quality/                 CheckV completeness and contamination
-├── pileup/                         coverage.txt (read coverage of each contig)
-├── filter_viral_contigs/           ↪ <sampleid>_selection1.csv (contigs that passed the filter)
-├── extract_fasta_viral_selection/viral_selection/
-│                                   <sampleid>_sel1_viral.fa, <sampleid>_sel1_provirus.fa,
-│                                   <sampleid>_map_virus.csv, <sampleid>_map_provirus.csv
-└── index_bam/                      <sampleid>.sorted.bam, <sampleid>.sorted.bam.bai
+├── bbduk/                   ↪ <sampleid>_adapter_trimmed_r{1,2}.fastq.gz
+├── trimmomatic/             <sampleid>_clean_r{1,2}.fastq.gz
+├── megahit/assembly/        contigs.fa
+├── genomad/                 contigs_summary/
+├── checkv/                  quality/
+├── pileup/                  coverage.txt
+├── filter_viral_contigs/    ↪ <sampleid>_selection1.csv
+├── extract_fasta_viral_selection/
+│   └── viral_selection/     <sampleid>_sel1_viral.fa
+│                            <sampleid>_sel1_provirus.fa
+│                            <sampleid>_map_virus.csv
+│                            <sampleid>_map_provirus.csv
+└── index_bam/               <sampleid>.sorted.bam (+ .bai)
 
 viral_catalog/
-├── viral_catalog.fna               every sample's viral + proviral sequences, concatenated
-├── mmseqs_easy_cluster/            viral_catalog_rep_seq.fasta (one sequence per cluster),
-│                                   viral_catalog_cluster.tsv (which sequence is in which cluster)
-├── bwa_index/                      ↪ BWA index of viral_catalog_rep_seq.fasta
-└── coverm/                         viral_catalog.txt (the abundance table)
+├── viral_catalog.fna
+├── mmseqs_easy_cluster/     viral_catalog_rep_seq.fasta
+│                            viral_catalog_cluster.tsv
+├── bwa_index/               ↪ index of viral_catalog_rep_seq.fasta
+└── coverm/                  viral_catalog.txt
 
 pipeline_info/
-└── metrics_summary.tsv             one row of QC numbers per sample
+└── metrics_summary.tsv
 ```
 
 ↪ = symlink into `work/` (see below). Everything else is a real copy.
@@ -317,9 +332,13 @@ What the main files are:
 
 | File | What it is |
 |---|---|
+| `genomad/contigs_summary/`, `checkv/quality/`, `pileup/coverage.txt` | geNomad's virus and plasmid calls, CheckV's completeness and contamination estimates, and the read coverage of each contig. The viral filter uses all three. |
+| `filter_viral_contigs/<sampleid>_selection1.csv` | The contigs that passed the viral filter. |
 | `trimmomatic/<sampleid>_clean_r{1,2}.fastq.gz` | Clean reads after adapter and quality trimming. These are used for assembly and mapping. |
 | `megahit/assembly/contigs.fa` | The sample's assembly. |
 | `extract_fasta_viral_selection/viral_selection/*_sel1_viral.fa`, `*_sel1_provirus.fa` | The sample's viral and proviral sequences after the geNomad/CheckV/coverage filter. Sequence names start with the sample ID, so they stay unique once samples are combined. The `*_map_*.csv` files link each new name back to its original contig. |
+| `viral_catalog/viral_catalog.fna` | Every sample's viral and proviral sequences, concatenated, before clustering. |
+| `viral_catalog/mmseqs_easy_cluster/viral_catalog_cluster.tsv` | Which sequence belongs to which cluster (representative, member). |
 | `viral_catalog/mmseqs_easy_cluster/viral_catalog_rep_seq.fasta` | The clustered viral catalog: one representative sequence per cluster of near-identical sequences (≥ 95% identity, ≥ 85% coverage by default). |
 | `viral_catalog/coverm/viral_catalog.txt` | The abundance table. One row per catalog sequence and one column per sample. The values are read counts by default (`coverm_m`). |
 | `index_bam/<sampleid>.sorted.bam` | The sample's clean reads mapped to the catalog, with unmapped reads removed. |
