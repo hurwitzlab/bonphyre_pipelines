@@ -14,7 +14,7 @@ Clone this repo and [`nextflow_process_library`](https://github.com/hurwitzlab/n
 
 ```
 some_parent_dir/
-  viral_inference_benchmark/
+  bonphyre_pipelines/
   nextflow_process_library/
 ```
 
@@ -29,71 +29,78 @@ this location, every include fails at parse time.
 
 ```
 nextflow_pipelines/
+  nextflow.config                      # HOW to run: profiles (executor, Singularity, limits) per cluster
   conf/
-    site.config                        # edit this, once per machine/cluster
-    base.config                        # default per-process resources, by label
-  nextflow.config                      # repo-wide: profiles, includeConfig site.config + base.config
+    site.config                        # WHERE things are: databases, .sif images, data lake root
+    base.config                        # HOW MUCH: Slurm queue/account, resources per label, publish labels
   workflows/
     <name>/
-      <name>.config                    # per-pipeline: I/O paths, tool params, container refs
+      <name>.config                    # WHAT to run: reads, database paths, containers, tool params
       <name>.nf
 ```
 
-Each `<name>.config` includes `'../../nextflow.config'`, which pulls in
-`conf/site.config` — so `params.databases_dir` and
-`params.singularity_images_dir` are available to every pipeline without
-being redefined per pipeline. `i_mg_viralinferencegenomad.config` additionally
-includes `'../../conf/site.config'` directly, *before* that, because it
-needs `params.data_lake_dir` early to build `params.outdir` (which must
-already be set by the time `nextflow.config` is parsed — see the comments
-in that file). Re-including the same config file twice is harmless; a
-future `<name>.config` that also builds `outdir` from the data lake should
-follow the same pattern.
+| File | What it holds |
+|---|---|
+| `workflows/<name>/<name>.config` | That pipeline's `reads` default, database paths, `container__*` images, tool params (`bbduk_k`, `megahit_preset`, ...), QC thresholds, and the `pipeline_name`/`workflow_version` that (with `--project_id`) build `outdir`. This is the file you pass with `-c`; it includes the other three. |
+| `conf/site.config` | `databases_dir`, `singularity_images_dir`, `singularity_images_dev`, `data_lake_dir`: where reference databases, container images and results live on one machine/cluster. Pipeline configs build every path from these. |
+| `conf/base.config` | The Slurm `queue` and `clusterOptions` (account/QOS) every job is submitted to, default CPU/memory/time per resource label (`process_single/low/medium/high`), the retry rule, and the `publish_*` labels. |
+| `nextflow.config` | Profiles (`hazel`, `hazel_test`): executor, how Singularity is loaded, `resourceLimits`, `workDir`. |
 
-There are four config files in this repo. As someone *running* a pipeline
-(not developing one), you'll only ever touch the first one:
+### What you edit depends on who you are
 
-| File | What it holds | Who edits it, and when |
+The defaults are set up for the Hurwitz lab on NC State's Hazel cluster, so
+the further you are from that setup, the more files you edit:
+
+| You are... | Files you edit | Profile |
 |---|---|---|
-| `conf/site.config` | `databases_dir`, `singularity_images_dir`, `data_lake_dir` — where your reference databases, container images, and data lake root live on disk | **You, once**, the first time you run any pipeline here on a new machine/cluster. This is the file. |
-| `workflows/<name>/<name>.config` | That pipeline's tool params (`bbduk_k`, `megahit_preset`, ...), the `reads` I/O default, container references, and the `pipeline_name`/`workflow_version` that (together with `--project_id`) build `outdir` | The pipeline's maintainer, when adding/changing a tool or its default settings. As a runner, you'd only touch this to change a *default* permanently — day-to-day tweaks go through `--flags` instead (see below), not this file. |
-| `nextflow.config` (repo root) | Profiles (`hazel`, `local`) and `includeConfig` wiring that pulls `site.config`/`base.config` into every pipeline | Rarely — only when adding support for a new cluster/executor. Not something you edit to run an existing pipeline. |
-| `conf/base.config` | Default CPU/memory/time per resource tier (`process_single/low/medium/high`), shared by every pipeline | Rarely — only if the lab's actual hardware/typical job sizes change lab-wide. |
+| **A member of BONPHYRE / the Hurwitz lab** | Only `workflows/<name>/<name>.config` | `-profile hazel` |
+| **At NC State, not in the Hurwitz lab** | The workflow config, `conf/site.config` (your databases, images and data lake), and `queue`/`clusterOptions` in `conf/base.config` (your Slurm partition and account; the lab's `compute_partners` / `--account=ivirus_cpu` reject other users) | `-profile hazel` |
+| **At a different organization** | All of the above, **plus** a new profile in `nextflow.config` (copy `hazel` and change the executor, `beforeScript`, `resourceLimits` and `singularity.cacheDir`) | `-profile <your_profile>` |
 
-In short: **`conf/site.config` is the one file you edit to use these
-pipelines.** Everything else is either plumbing you never touch, or a
-per-pipeline default that a maintainer sets and you override at the command
-line instead of editing.
+You should never need to edit a pipeline's `.nf` workflow, subworkflow, or
+module file to run it somewhere new. If you find yourself doing that,
+something belongs in one of the config files above instead.
 
-## Running a pipeline
+For step-by-step instructions, see each pipeline's own README, e.g.
+[`workflows/i_mg_viralinferencegenomad/README.md`](workflows/i_mg_viralinferencegenomad/README.md).
 
-**The only file you need to edit is `conf/site.config`, and only the first
-time you run a pipeline on a new machine or cluster.** It holds three values:
+### How the configs are loaded
 
-```groovy
-params {
-    databases_dir          = '/path/to/databases'
-    singularity_images_dir = '/path/to/singularity_images'
-    data_lake_dir           = '/path/to/data_lake'
-}
+Each `<name>.config` includes `'../../conf/site.config'`,
+`'../../conf/base.config'` and `'../../nextflow.config'`, so
+`params.databases_dir`, `params.singularity_images_dir` and the profiles are
+available to every pipeline without being redefined per pipeline.
+`site.config` comes first because the pipeline config needs
+`params.data_lake_dir` early to build `params.outdir` (which must already be
+set by the time `nextflow.config` is parsed; see the comments in that file).
+`nextflow.config` includes `site.config` and `base.config` again;
+re-including the same config file twice is harmless. A future `<name>.config`
+that also builds `outdir` from the data lake should follow the same pattern.
+
+When a value is set in more than one place, the last one loaded wins, and
+command-line values beat every file:
+
+```
+site.config / base.config  →  nextflow.config (+ -profile)  →  <name>.config  →  -params-file  →  --flags
 ```
 
-Point these at your reference database root, your prebuilt `.sif` container
-directory, and your data lake root, and every pipeline in this repo can find
-its databases, containers, and where to publish results.
+So one-off changes go on the command line (`--trimmomatic_minlen 60`); edit a
+file only to change a default every time.
 
-Everything else is passed at the command line, not edited in a file:
+## Running a pipeline
 
 ```bash
 nextflow run workflows/i_mg_viralinferencegenomad/i_mg_viralinferencegenomad.nf \
     -c workflows/i_mg_viralinferencegenomad/i_mg_viralinferencegenomad.config \
     -profile hazel \
-    --reads '/path/to/your/reads/*_{1,2}.fastq.gz' \
-    --project_id my_project
+    --reads '/path/to/your/reads/*_R{1,2}.fastq.gz' \
+    --project_id my_project \
+    -resume
 ```
 
-- `-profile` selects the container engine/executor (`hazel`, `local`, or a new
-  one you add to `nextflow.config`).
+- `-c` is required: it loads the pipeline config, which loads the rest.
+- `-profile` selects the executor/container setup (`hazel`, `hazel_test`, or
+  a new one you add to `nextflow.config`).
 - `--reads` and any other `params.*` shown in a pipeline's `.config` file can
   be overridden the same way, without editing anything.
 - `--project_id` is **required** — there's no default. Every run is
@@ -105,12 +112,8 @@ nextflow run workflows/i_mg_viralinferencegenomad/i_mg_viralinferencegenomad.nf 
   directly with `--outdir` since it's a normal `params.outdir` under the
   hood, but doing so opts you out of the data lake layout this convention
   exists for.
-
-You should never need to edit a pipeline's `.config`, `.nf` workflow,
-subworkflow, or module file just to run it somewhere new — if you find
-yourself doing that, something is missing from `conf/site.config` or
-`nextflow.config` instead.
-
+- On Hazel, submit the launch command as a job (`sbatch submit_hazel.sh`)
+  rather than running it on the login node.
 
 ## Modules
 
