@@ -563,3 +563,32 @@ Entry format:
 - Put back the `--project_id` check (dev had dropped it, so outdir became `.../null/...`), in
   both `nextflow_pipelines/` and `dev/`. Fixed the help text, which said `--projectid`.
   Tested: a run without it now stops with the error.
+
+## 2026-11-13
+- Added a user guide for `i_mg_viralinferencegenomad` as
+  `workflows/i_mg_viralinferencegenomad/README.md`, in both `nextflow_pipelines/` and the
+  `dev/` copy (PR #16, branch `add-pipeline-readme`). The two copies have to be kept in sync
+  by hand. The guide splits setup by who is running it:
+  - Hurwitz lab members edit only the workflow config.
+  - Other NC State users also edit `site.config` and the `queue`/`clusterOptions` lines in
+    `base.config`. The lab's `compute_partners` / `--account=ivirus_cpu` would reject their
+    jobs.
+  - Other organizations also add a profile to `nextflow.config`.
+- Same PR: `nextflow_pipelines/README.md` no longer says `site.config` is the only file to
+  edit. It now has the same per-user breakdown, the config load order, and the fixed
+  sibling-repo name.
+- `data_lake_dir` stays `/share/ivirus/mtouceda` in `site.config` until the real data lake
+  exists. Until then, lab members' results land there too.
+- Found while checking the guide against the code:
+  - `bbwrap` publishes nothing.
+  - On `nextflow_process_library` `main`, megahit is still `process_medium` with no `-m`,
+    unlike the tested `dev/` copy (`process_high` + `-m`), so the bigger allocation is not
+    released yet.
+  - The `dev/` mmseqs2 module uses `container__mmseqs`, but the config defines
+    `container__mmseqs2` (`main` matches the config).
+- Rewrote the top-level `README.md` (branch `update-repo-readme`): removed the author name
+  from the title, and added a pipelines table, the repo layout, short run instructions and
+  the dev → release steps.
+- Still stale, not changed: the `/manifest` skill, `subworkflows/CLAUDE.md` (both still
+  describe manifests), the empty `nextflow_pipelines/workflows/README.md`, and this
+  notebook's title (`viral_inference_benchmark`).
