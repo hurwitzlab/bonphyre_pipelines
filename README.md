@@ -59,6 +59,10 @@ and which ones you edit, see
    dev copy goes to `nextflow_process_library` in its own PR, so the released
    pipeline and the library match.
 
+## Authors
+
+- Mery Touceda-Suárez
+
 ## Contributing
 
 This repo gets edited concurrently by different lab members, and often by

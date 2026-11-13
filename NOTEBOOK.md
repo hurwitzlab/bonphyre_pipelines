@@ -1,4 +1,4 @@
-# Lab Notebook — viral_inference_benchmark
+# Lab Notebook
 
 Chronological log of work sessions on this project. Newest entries at the bottom.
 Append-only — never edit or reorder past entries.
@@ -592,3 +592,12 @@ Entry format:
 - Still stale, not changed: the `/manifest` skill, `subworkflows/CLAUDE.md` (both still
   describe manifests), the empty `nextflow_pipelines/workflows/README.md`, and this
   notebook's title (`viral_inference_benchmark`).
+- Same branch, follow-up:
+  - Added an Authors section to `README.md`.
+  - Replaced the default `reads` (my test data) with the placeholder
+    `/path/to/your/reads/*_R{1,2}.fastq.gz` in the `i_mg_viralinferencegenomad` config, in
+    both `nextflow_pipelines/` and `dev/`. It resolves with `nextflow config -profile hazel`.
+  - Removed the empty `nextflow_pipelines/workflows/README.md` and the old
+    `dev/build_manifest.txt`. `build.sh` writes a new one whenever it builds into `dev/`.
+  - Dropped the old project name from this notebook's title.
+  - The manifest skill and `subworkflows/CLAUDE.md` are left for later.
