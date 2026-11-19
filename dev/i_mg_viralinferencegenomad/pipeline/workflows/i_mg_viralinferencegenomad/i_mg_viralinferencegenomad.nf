@@ -71,7 +71,7 @@ publish @ ${params.outdir}
     // raises an error early if the glob pattern matches nothing.
     reads_ch = Channel
         .fromFilePairs(params.reads, flat: true, checkIfExists: true)
-        .view { sample_id, r1, r2 -> "Found sample: ${sample_id}" }  //for debugging
+        //.view { sample_id, r1, r2 -> "Found sample: ${sample_id}" }  //for debugging
 	
     // -----------------------------------------------------------------------------------------------------------------------------
     // 3. Pipeline
