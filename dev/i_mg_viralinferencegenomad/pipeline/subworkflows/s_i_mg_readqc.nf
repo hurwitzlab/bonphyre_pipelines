@@ -38,3 +38,4 @@ workflow s_i_mg_readqc {
         reads   = trimmomatic.out.clean_reads   // (sampleid, r1, r2)
         metrics = metrics_ch                    // (sampleid, "raw_reads\tclean_reads\tpct_reads_retained")
 }
+

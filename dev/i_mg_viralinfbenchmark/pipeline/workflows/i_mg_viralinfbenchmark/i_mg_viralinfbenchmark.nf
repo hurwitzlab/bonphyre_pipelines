@@ -56,12 +56,13 @@ publish @ ${params.outdir}
     // 2. Channel creation
     // -----------------------------------------------------------------------------------------------------------------------------
     // 2.1. Databases
-    genomad_db_ch    = Channel.fromPath(params.genomad_db, checkIfExists: true).collect()
-    viralm_db_ch     = Channel.fromPath(params.viralm_db, checkIfExists: true).collect()
-    virsorter2_db_ch = Channel.fromPath(params.virsorter2_db, checkIfExists: true).collect()
+    genomad_db_ch       = Channel.fromPath(params.genomad_db, checkIfExists: true).collect()
+    viralm_db_ch        = Channel.fromPath(params.viralm_db, checkIfExists: true).collect()
+    virsorter2_db_ch    = Channel.fromPath(params.virsorter2_db, checkIfExists: true).collect()
+    vibrant_db_ch       = Channel.fromPath(params.vibrant_db, checkIfExists: true).collect()
 
     // 2.2. Scripts
-    virrep_script_ch = Channel.fromPath(params.virrep_script, checkIfExists: true).collect()   // patched VirRep.py
+    virrep_script_ch    = Channel.fromPath(params.virrep_script, checkIfExists: true).collect()   // patched VirRep.py
 
     // 2.3. Contigs: tuple (sampleid, contigs), sampleid = name of the contigs' parent directory
     contigs_ch = Channel
@@ -76,7 +77,7 @@ publish @ ${params.outdir}
     // -----------------------------------------------------------------------------------------------------------------------------
 
     // -----------------------------------------
-    // 3.1. Viral inference tools
+    // 3.2. Viral inference tools
     // -----------------------------------------
 
     // deepmicroclass2
@@ -92,7 +93,7 @@ publish @ ${params.outdir}
         marvel(reads_ch)
 
     // vibrant
-        vibrant(contigs_ch)
+        vibrant(contigs_ch, vibrant_db_ch)
 
     // viralm
         viralm(contigs_ch, viralm_db_ch)
