@@ -21,6 +21,7 @@
     -1 !{clean_r1} \
     -2 !{clean_r2} \
     -o megahit_out \
+    -m !{(long)(task.memory.toBytes() * 0.9)} \
     --out-prefix out
 
     rm -r megahit_out/intermediate_contigs

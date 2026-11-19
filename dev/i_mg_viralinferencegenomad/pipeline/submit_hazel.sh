@@ -1,8 +1,8 @@
 #!/bin/bash
-#SBATCH --job-name=test
+#SBATCH --job-name=kudzu_viralinf
 #SBATCH --output=%j.out
 #SBATCH --error=%j.err
-#SBATCH --time=24:00:00
+#SBATCH --time=72:00:00
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=2G
 
@@ -18,6 +18,7 @@ export NXF_APPTAINER_CACHEDIR="$APPTAINER_CACHEDIR"
 # --- Launch the pipeline ---
 nextflow run workflows/i_mg_viralinferencegenomad/i_mg_viralinferencegenomad.nf \
     -c workflows/i_mg_viralinferencegenomad/i_mg_viralinferencegenomad.config \
+    --reads '/rs1/researchers/b/blhurwit/users/mtouced/kudzu/Goller/*_R{1,2}_001.fastq.gz' \
     -profile hazel \
-    --project_id test \
+    --project_id kudzu \
     -resume
