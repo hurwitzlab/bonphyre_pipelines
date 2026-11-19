@@ -50,7 +50,8 @@ def main():
     proviral_dictionary={}
 
 ## genomad proviruses
-    provirus = provirus[(provirus['genomad'])]
+    # explicit == True: empty CSV -> object dtype -> bare Series is read as column labels
+    provirus = provirus[provirus['genomad'] == True]
     pro_selection1 = provirus['contig_id'].tolist()
 
     pro = checkV+"/proviruses.fna"
