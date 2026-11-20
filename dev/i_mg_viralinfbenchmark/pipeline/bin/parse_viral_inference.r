@@ -46,6 +46,12 @@ tools <- list(
       transmute(contig = clean_id(seqname), score,
                 call = as.integer(score >= opt$virrep_score))),
 
+  seeker = list(
+    pattern = "seeker_predictions\\.tsv$",
+    parse   = function(f) read_tsv(f, show_col_types = FALSE) %>%
+      transmute(contig = clean_id(name), score,                 # score = phage score
+                call = as.integer(prediction == "Phage"))),
+
   virsorter2 = list(
     pattern = "^final-viral-score\\.tsv$",
     parse   = function(f) read_tsv(f, show_col_types = FALSE, na = c("", "NA", "nan")) %>%
