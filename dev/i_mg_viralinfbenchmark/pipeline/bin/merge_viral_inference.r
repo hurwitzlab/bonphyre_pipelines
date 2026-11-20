@@ -1,7 +1,8 @@
 #!/usr/bin/env Rscript
 # Merge parsed outputs (parse_viral_inference.r) of the viral inference tools
 # outputs: <prefix>_long.tsv  (sampleid | tool | contig | score | call)
-#          <prefix>_calls.tsv (sampleid | contig | one V/P/O column per tool)
+#          <prefix>_calls.tsv (sampleid | contig | one 1/0 column per tool)
+#            1 = tool called the contig viral; 0 = not called, or not reported by the tool
 
 # load packages
 suppressPackageStartupMessages({
@@ -13,7 +14,7 @@ suppressPackageStartupMessages({
 # argument list
 option_list <- list(
   make_option(c("-c", "--contigs"), type = "character", default = NULL,
-              help = "Contigs FASTA; if given, every contig gets a row (O when no tool reports it)"),
+              help = "Contigs FASTA; if given, every contig gets a row (0 when no tool reports it)"),
   make_option(c("-s", "--sampleid"), type = "character", default = NULL,
               help = "Sample id for --contigs rows (required with --contigs)"),
   make_option(c("-o", "--prefix"), type = "character",
@@ -31,9 +32,9 @@ if (!is.null(opt$contigs) && is.null(opt$sampleid)) stop("--sampleid is required
 # import data
 long <- bind_rows(lapply(files, read_tsv, show_col_types = FALSE,
                          col_types = cols(sampleid = "c", tool = "c", contig = "c",
-                                          score = "d", call = "c")))
+                                          score = "d", call = "i")))
 
-# wide table of calls; contigs a tool did not report -> O
+# wide table of calls, one row per sampleid x contig
 calls <- long %>%
   select(sampleid, contig, tool, call) %>%
   pivot_wider(names_from = tool, values_from = call)
@@ -44,9 +45,10 @@ if (!is.null(opt$contigs)) {
                      by = c("sampleid", "contig"))
 }
 
+# contigs a tool did not report -> 0
 tool_cols <- setdiff(names(calls), c("sampleid", "contig"))
 calls <- calls %>%
-  mutate(across(all_of(tool_cols), ~ replace_na(.x, "O"))) %>%
+  mutate(across(all_of(tool_cols), ~ replace_na(.x, 0L))) %>%
   arrange(sampleid, contig)
 
 # save output

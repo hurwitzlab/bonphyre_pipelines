@@ -2,7 +2,7 @@
 
 // Parse + merge viral inference tool outputs (benchmark-specific, scripts in bin/)
 
-// Parse one tool's output into a standard table: sampleid | tool | contig | score | call (V/P/O)
+// Parse one tool's output into a standard table: sampleid | tool | contig | score | call (1 = viral, 0 = not)
 process parse_viral_inference {
     label "process_single"
     label "publish_intermediate"
@@ -28,7 +28,7 @@ process parse_viral_inference {
     '''
 }
 
-// Merge all parsed tables of a sample: long table + contig x tool V/P/O matrix (all contigs in the assembly)
+// Merge all parsed tables of a sample: long table + contig x tool 1/0 matrix (all contigs in the assembly)
 process merge_viral_inference {
     label "process_single"
     label "publish_final"
