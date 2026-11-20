@@ -28,6 +28,7 @@ include { vibrant } from '../../../nextflow_process_library/modules/vibrant/vibr
 include { viralm } from '../../../nextflow_process_library/modules/viralm/viralm.nf'
 include { virrep } from '../../../nextflow_process_library/modules/virrep/virrep.nf'
 include { virsorter2 } from '../../../nextflow_process_library/modules/virsorter2/virsorter2.nf'
+include { parse_viral_inference; merge_viral_inference } from '../../modules/local/viral_inference_parse.nf'
 
 workflow {
     // -----------------------------------------------------------------------------------------------------------------------------
@@ -103,5 +104,26 @@ publish @ ${params.outdir}
 
     // virsorter2
         virsorter2(contigs_ch, virsorter2_db_ch)
+
+    // -----------------------------------------
+    // 3.3. Parse + merge tool outputs
+    // -----------------------------------------
+
+    // tag each tool's output: tuple (sampleid, tool, output dir)
+    parse_in_ch = deepmicroclass2.out.classification.map  { id, d -> tuple(id, 'deepmicroclass2', d) }
+        .mix(deepvirfinder.out.viral_inferences.map       { id, d -> tuple(id, 'deepvirfinder',   d) })
+        .mix(genomad.out.inferences.map                   { id, d -> tuple(id, 'genomad',         d) })
+        .mix(viralm.out.classification.map                { id, d -> tuple(id, 'viralm',          d) })
+        .mix(virrep.out.viral_inferences.map              { id, d -> tuple(id, 'virrep',          d) })
+        .mix(virsorter2.out.viral_inferences.map          { id, d -> tuple(id, 'virsorter2',      d) })
+
+        parse_viral_inference(parse_in_ch)
+
+    // all parsed tables of a sample + its contigs: tuple (sampleid, [parsed], contigs)
+    merge_in_ch = parse_viral_inference.out.parsed
+        .groupTuple()
+        .join(contigs_ch)
+
+        merge_viral_inference(merge_in_ch)
 }
 
