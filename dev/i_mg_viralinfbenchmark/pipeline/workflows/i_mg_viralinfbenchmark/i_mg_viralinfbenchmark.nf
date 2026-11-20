@@ -24,10 +24,13 @@ include { deepmicroclass2 } from '../../../nextflow_process_library/modules/deep
 include { deepvirfinder } from '../../../nextflow_process_library/modules/deepvirfinder/deepvirfinder.nf'
 include { genomad } from '../../../nextflow_process_library/modules/genomad/genomad.nf'
 include { marvel } from '../../../nextflow_process_library/modules/marvel/marvel.nf'
+include { filter_min_length } from '../../../nextflow_process_library/modules/seqkit/seqkit.nf'
+include { seeker } from '../../../nextflow_process_library/modules/seeker/seeker.nf'
 include { vibrant } from '../../../nextflow_process_library/modules/vibrant/vibrant.nf'
 include { viralm } from '../../../nextflow_process_library/modules/viralm/viralm.nf'
 include { virrep } from '../../../nextflow_process_library/modules/virrep/virrep.nf'
 include { virsorter2 } from '../../../nextflow_process_library/modules/virsorter2/virsorter2.nf'
+include { parse_viral_inference; merge_viral_inference } from '../../modules/local/viral_inference_parse.nf'
 
 workflow {
     // -----------------------------------------------------------------------------------------------------------------------------
@@ -92,6 +95,10 @@ publish @ ${params.outdir}
     // marvel
         marvel(reads_ch)
 
+    // seeker (no length option: filter contigs with seqkit first)
+        filter_min_length(contigs_ch, params.seeker_minlength)
+        seeker(filter_min_length.out.filtered_sequences)
+
     // vibrant
         vibrant(contigs_ch, vibrant_db_ch)
 
@@ -103,5 +110,27 @@ publish @ ${params.outdir}
 
     // virsorter2
         virsorter2(contigs_ch, virsorter2_db_ch)
+
+    // -----------------------------------------
+    // 3.3. Parse + merge tool outputs
+    // -----------------------------------------
+
+    // tag each tool's output: tuple (sampleid, tool, output dir)
+    parse_in_ch = deepmicroclass2.out.classification.map  { id, d -> tuple(id, 'deepmicroclass2', d) }
+        .mix(deepvirfinder.out.viral_inferences.map       { id, d -> tuple(id, 'deepvirfinder',   d) })
+        .mix(genomad.out.inferences.map                   { id, d -> tuple(id, 'genomad',         d) })
+        .mix(seeker.out.viral_inferences.map              { id, d -> tuple(id, 'seeker',          d) })
+        .mix(viralm.out.classification.map                { id, d -> tuple(id, 'viralm',          d) })
+        .mix(virrep.out.viral_inferences.map              { id, d -> tuple(id, 'virrep',          d) })
+        .mix(virsorter2.out.viral_inferences.map          { id, d -> tuple(id, 'virsorter2',      d) })
+
+        parse_viral_inference(parse_in_ch)
+
+    // all parsed tables of a sample + its contigs: tuple (sampleid, [parsed], contigs)
+    merge_in_ch = parse_viral_inference.out.parsed
+        .groupTuple()
+        .join(contigs_ch)
+
+        merge_viral_inference(merge_in_ch)
 }
 
